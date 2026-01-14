@@ -22,7 +22,7 @@ trigger: always_on
 - alpine x-data objects are viewmodels
 - viewmodels are classes
 - view (html elements) are bound to public viewmodel properties
-- view events are subscribed via x-on (or the @click*, @mouse*, etc. shorthands) and forwared to viewmodel method calls.
+- view events are subscribed via x-on (or the @click*, @mouse*, @resize etc. shorthands) and forwared to viewmodel method calls.
 - inputs are bound to viewmodel public properties
 - all viewmodels implement the alpine init() method
 - viewmodels are organized in component pattern; a root viewmodel can have serveral sub viewmodels, either in public lists (x-for) or in public properties

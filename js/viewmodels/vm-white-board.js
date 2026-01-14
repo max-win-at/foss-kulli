@@ -30,7 +30,7 @@ class VmWhiteBoard {
      * Alpine.js init method - called automatically
      */
     init() {
-        // State already initialized in constructor
+        // Resize handled via @resize.window in HTML binding
     }
 
     /**
@@ -264,6 +264,33 @@ class VmWhiteBoard {
             x: leftmostNote.x,
             y: lowestY + VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP
         };
+    }
+
+    /**
+     * Rearrange all notes to fit the current viewport width
+     * Called on window resize
+     */
+    rearrangeNotes() {
+        if (this.notes.length === 0) return;
+
+        const viewportWidth = window.innerWidth;
+        let currentX = VmWhiteBoard.INITIAL_X;
+        let currentY = VmWhiteBoard.INITIAL_Y;
+        let rowMaxHeight = 0;
+
+        for (const note of this.notes) {
+            // Check if note would overflow current row
+            if (currentX + VmWhiteBoard.NOTE_WIDTH > viewportWidth - VmWhiteBoard.NOTE_GAP) {
+                // Move to next row
+                currentX = VmWhiteBoard.INITIAL_X;
+                currentY += VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
+            }
+
+            note.x = currentX;
+            note.y = currentY;
+
+            currentX += VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
+        }
     }
 }
 

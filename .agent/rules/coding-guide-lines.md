@@ -12,3 +12,5 @@ trigger: always_on
 - service file names are services/service-name.js
 - model classes are calles MdlModelName
 - model file names are models/model-name.js
+- do not use window reference in classes
+- implement all events via alpine mechanisms

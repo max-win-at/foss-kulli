@@ -24,8 +24,8 @@
 
 <body>
     <!-- Main White Board -->
-    <div class="white-board" x-data="vmWhiteBoard()" @keydown.window="onKeyDown($event)"
-        @paste.window="onPaste($event)">
+    <div class="white-board" x-data="vmWhiteBoard()" @keydown.window="onKeyDown($event)" @paste.window="onPaste($event)"
+        @resize.window="rearrangeNotes()">
 
         <!-- Hidden Input for Mobile Keyboard & Clipboard Support -->
         <input type="text" class="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off"
