@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Foss Kulli - A simple sticky notes app for your browser">
+    <title>Foss Kulli - Sticky Notes</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <!-- Main White Board -->
+    <div class="white-board" x-data="vmWhiteBoard()" @keydown.window="onKeyDown($event)"
+        @paste.window="onPaste($event)">
+
+        <!-- Hidden Input for Mobile Keyboard & Clipboard Support -->
+        <input type="text" class="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off"
+            spellcheck="false" @input="onInput($event)" @blur="onInputBlur($event)"
+            aria-label="Type to create a new note">
+
+        <!-- Hint Text -->
+        <div class="add-hint-text" x-show="hintVisible" x-transition.opacity>
+            Start Typing or Paste From Clipboard.
+        </div>
+
+        <!-- Sticky Notes Container -->
+        <template x-for="note in notes" :key="note.id">
+            <div class="sticky-note" :style="`left: ${note.x}px; top: ${note.y}px;`" x-text="note.text">
+            </div>
+        </template>
+
+        <!-- Currently Editing Note (immediate spawn with cursor) -->
+        <div class="sticky-note editing" x-show="editingNote" x-transition
+            :style="editingNote ? `left: ${editingNote.x}px; top: ${editingNote.y}px;` : ''">
+            <div contenteditable="true" class="note-editor" x-ref="noteEditor"
+                @input="updateEditingText($event.target.textContent)" @keydown="onEditingKeyDown($event)"
+                @blur="confirmEditing()">
+            </div>
+        </div>
+
+        <!-- Search FAB Button -->
+        <button class="fab fab-search" @click.stop="toggleSearch()" aria-label="Search notes">
+            <span class="material-icons">search</span>
+        </button>
+
+        <!-- About FAB Button -->
+        <button class="fab fab-about" @click.stop="toggleAbout()" aria-label="About">
+            <span class="material-icons">info</span>
+        </button>
+
+        <!-- Popup Backdrop (click to close) -->
+        <div class="popup-backdrop" x-show="isSearchOpen || isAboutOpen" @click="closePopups()" x-transition.opacity>
+        </div>
+
+        <!-- Search Popup -->
+        <div class="popup popup-search" x-show="isSearchOpen" @click.stop x-transition>
+            <input type="text" placeholder="Search notes..." x-model="searchQuery" @keydown.escape="closePopups()"
+                x-ref="searchInput">
+        </div>
+
+        <!-- About Popup -->
+        <div class="popup popup-about" x-show="isAboutOpen" @click.stop x-transition>
+            <h3>Foss Kulli</h3>
+            <p>A simple sticky notes app for your browser. Just start typing or paste from clipboard to create notes.
+            </p>
+            <p>Open source and privacy-focused. Your notes stay in your browser.</p>
+            <div class="version">Version 0.1.0</div>
+        </div>
+    </div>
+
+    <!-- Load app scripts first, then Alpine -->
+    <script src="js/viewmodels/vm-sticky-note.js"></script>
+    <script src="js/viewmodels/vm-white-board.js"></script>
+    <script src="js/app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>
