@@ -3,20 +3,30 @@
  * Handles note creation, search, and about functionality
  */
 class VmWhiteBoard {
-    static NOTE_WIDTH = 200;
-    static NOTE_HEIGHT = 150;
+    static NOTE_WIDTH = 180;
+    static NOTE_HEIGHT = 180;
     static NOTE_GAP = 20;
-    static INITIAL_X = 40;
-    static INITIAL_Y = 160;
+    static INITIAL_X = 240; // 24px (left) + 180px (width) + 36px (gap)
+    static INITIAL_Y = 24;  // Align with top of stack
 
     /**
-     * @param {Function} noteFactory - Factory function to create notes: (text, x, y) => VmStickyNote
+     * @param {Function} noteFactory - Factory function to create notes: (text, x, y, id) => VmStickyNote
      */
     constructor(noteFactory) {
         this._noteFactory = noteFactory;
 
         // Initialize reactive state
         this.hintVisible = true;
+
+        // Icon Animation State
+        this.deleteIcon = 'delete';
+        this.dragIcon = 'pan_tool';
+        this.iconOpacity = 1;
+        this.iconInterval = null;
+
+        // Note: Do NOT bind methods here manually. Alpine proxies the instance,
+        // and manual binding to 'this' (the raw instance) breaks reactivity.
+
         this.notes = [];
         this.isSearchOpen = false;
         this.isAboutOpen = false;
@@ -90,6 +100,52 @@ class VmWhiteBoard {
     }
 
     /**
+     * Start editing an existing note
+     * @param {VmStickyNote} note 
+     */
+    editNote(note) {
+        // If already editing, confirm previous
+        if (this.editingNote) {
+            this.confirmEditing();
+        }
+
+        // Remove from list (will be re-added on confirm)
+        this.notes = this.notes.filter(n => n.id !== note.id);
+
+        // set as editing
+        this.editingNote = note;
+        this.hintVisible = false;
+
+        this.startIconAnimation(); // Start toggling icons
+
+        this.$nextTick(() => {
+            const editEl = this.$refs.noteEditor;
+            if (editEl) {
+                editEl.textContent = note.text;
+                editEl.focus();
+                // Select all text or move to end?
+                // Let's move to end
+                const range = document.createRange();
+                range.selectNodeContents(editEl);
+                range.collapse(false);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
+    }
+
+    /**
+     * Helper to get safe styling for the menu
+     */
+    getMenuPosition() {
+        if (!this.editingNote) return 'display: none;';
+        const x = parseInt(this.editingNote.x) || 0;
+        const y = parseInt(this.editingNote.y) || 0;
+        return `left: ${x}px; top: ${y + 190}px;`;
+    }
+
+    /**
      * Confirm the editing note and add to notes array
      */
     confirmEditing() {
@@ -97,6 +153,7 @@ class VmWhiteBoard {
             this.notes.push(this.editingNote);
         }
         this.editingNote = null;
+        this.stopIconAnimation(); // Stop anims
 
         if (this.notes.length === 0) {
             this.hintVisible = true;
@@ -107,10 +164,98 @@ class VmWhiteBoard {
      * Cancel editing and discard the note
      */
     cancelEditing() {
+        // If it was an existing note (has ID and text), restore it
+        // Check if we should restore? 
+        // Logic: if it has an id, it was likely existing. New notes might have id too though if factory makes them.
+        // We can check if it was in the list? No we removed it.
+        // Simply push it back if it has content?
+        // Or assume "Escape" means "Revert to original state"?
+        // If it's a new note (empty start), discard.
+        // If it was existing, we should probably put it back.
+        // For simplicity: if it has text, put it back.
+        if (this.editingNote && this.editingNote.text.trim().length > 0) {
+            this.notes.push(this.editingNote);
+        }
+
         this.editingNote = null;
+        this.stopIconAnimation(); // Stop anims
+
         if (this.notes.length === 0) {
             this.hintVisible = true;
         }
+    }
+
+
+    /**
+     * Delete the currently editing note
+     */
+    deleteEditingNote() {
+        this.editingNote = null;
+        this.stopIconAnimation(); // Stop anims
+
+        if (this.notes.length === 0) {
+            this.hintVisible = true;
+        }
+    }
+
+    startIconAnimation() {
+        this.stopIconAnimation(); // clear existing
+
+        // Start Interval loop (Fade Out -> Swap -> Fade In)
+        this.iconInterval = setInterval(() => {
+            // 1. Fade Out
+            this.iconOpacity = 0;
+
+            // 2. Wait for fade out (200ms), then Swap & Fade In
+            setTimeout(() => {
+                this.deleteIcon = (this.deleteIcon === 'delete') ? 'delete_forever' : 'delete';
+                this.dragIcon = (this.dragIcon === 'pan_tool') ? 'touch_app' : 'pan_tool';
+
+                // 3. Fade In
+                this.iconOpacity = 1;
+            }, 200); // Match CSS transition time
+
+        }, 1200); // 1.2s total cycle to allow for the 200ms pause
+
+        // Stop after 5 seconds roughly (4 cycles)
+        this.iconTimeout = setTimeout(() => {
+            this.stopIconAnimation();
+        }, 6000);
+    }
+
+    stopIconAnimation() {
+        if (this.iconInterval) {
+            clearInterval(this.iconInterval);
+            this.iconInterval = null;
+        }
+        if (this.iconTimeout) {
+            clearTimeout(this.iconTimeout);
+            this.iconTimeout = null;
+        }
+        // Reset defaults
+        this.deleteIcon = 'delete';
+        this.dragIcon = 'pan_tool';
+        this.iconOpacity = 1;
+    }
+
+    // --- Interactive Icon States ---
+
+    onDeleteEnter() {
+        this.stopIconAnimation(); // Interaction stops auto-anim
+        this.deleteIcon = 'delete_forever';
+    }
+
+    onDeleteLeave() {
+        this.deleteIcon = 'delete';
+    }
+
+    onDragStart() {
+        this.stopIconAnimation(); // Interaction stops auto-anim
+        this.dragIcon = 'touch_app';
+    }
+
+    onDragEnd() {
+        this.dragIcon = 'pan_tool';
     }
 
     /**
@@ -128,13 +273,15 @@ class VmWhiteBoard {
      * @param {KeyboardEvent} event 
      */
     onEditingKeyDown(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
+        // Ctrl+Enter to confirm
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
             this.confirmEditing();
         } else if (event.key === 'Escape') {
             event.preventDefault();
             this.cancelEditing();
         }
+        // Allow keys to bubble for normal typing (including plain Enter for newlines)
     }
 
     /**
@@ -203,6 +350,16 @@ class VmWhiteBoard {
     }
 
     /**
+     * Create a new empty note and start editing immediately
+     * Called when clicking the note stack/plus icon
+     */
+    createNewNote() {
+        // Prevent creating multiple editing notes if double clicked quickly
+        if (this.editingNote) return;
+        this.startEditing('');
+    }
+
+    /**
      * Create a new sticky note at the calculated position (for paste)
      * @param {string} text - Note content
      */
@@ -247,22 +404,24 @@ class VmWhiteBoard {
             return { x: newX, y: newY };
         }
 
-        // Overflow: place below leftmost note
-        let leftmostNote = allNotes[0];
+        // Overflow: Start a new row
         let lowestY = allNotes[0].y;
-
         for (const note of allNotes) {
-            if (note.x < leftmostNote.x) {
-                leftmostNote = note;
-            }
             if (note.y > lowestY) {
                 lowestY = note.y;
             }
         }
 
+        const nextRowY = lowestY + VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
+
+        // Smart Wrap: If we are below the note stack (Top 24 + Height 180 = 204),
+        // we can start from the left edge (NOTE_GAP) instead of indenting.
+        const stackBottom = 24 + 180;
+        const startX = (nextRowY > stackBottom) ? VmWhiteBoard.NOTE_GAP : VmWhiteBoard.INITIAL_X;
+
         return {
-            x: leftmostNote.x,
-            y: lowestY + VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP
+            x: startX,
+            y: nextRowY
         };
     }
 
@@ -282,8 +441,15 @@ class VmWhiteBoard {
             // Check if note would overflow current row
             if (currentX + VmWhiteBoard.NOTE_WIDTH > viewportWidth - VmWhiteBoard.NOTE_GAP) {
                 // Move to next row
-                currentX = VmWhiteBoard.INITIAL_X;
                 currentY += VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
+
+                // Smart Wrap logic for rearrange
+                const stackBottom = 24 + 180;
+                if (currentY > stackBottom) {
+                    currentX = VmWhiteBoard.NOTE_GAP;
+                } else {
+                    currentX = VmWhiteBoard.INITIAL_X;
+                }
             }
 
             note.x = currentX;

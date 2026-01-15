@@ -4,8 +4,8 @@
 
 /* CSS Custom Properties */
 :root {
-    --note-width: 200px;
-    --note-height: 150px;
+    --note-width: 180px;
+    --note-height: 180px;
     --note-gap: 20px;
     --note-bg: #ffffa5;
     --note-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
@@ -40,30 +40,171 @@ body {
     position: relative;
     width: 100%;
     height: 100%;
-    background: #ffffff;
+    background: #e1f5fe;
+    /* Light blue background */
     overflow: auto;
 }
 
+/* Empty State Container */
+.empty-state-container {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    /* Vertically center items */
+    justify-content: flex-start;
+    /* Start from left */
+    pointer-events: none;
+    /* Let clicks pass through container to underlying elements if needed, but... */
+    pointer-events: auto;
+    /* Wait, we WANT the container to be clickable now for the stack interaction */
+
+    user-select: none;
+    z-index: 0;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+    /* Make the whole area clickable */
+}
+
+/* Make the note stack itself clickable too just to be safe if hint is hidden */
+.note-stack {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.note-stack:active {
+    transform: scale(0.98);
+}
+
+
+/* Add Hint Text */
 /* Add Hint Text */
 .add-hint-text {
     position: absolute;
-    top: 80px;
-    left: 40px;
-    font-size: 2.5rem;
-    font-weight: 300;
-    color: var(--hint-color);
+    bottom: 32px;
+    /* Align vertically with FABs (roughly centered) */
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.2rem;
+    /* Reduce size slightly for cleaner look */
+    font-weight: 500;
+    color: #b0bec5;
+    text-align: center;
+    white-space: nowrap;
+    z-index: 50;
     pointer-events: none;
-    user-select: none;
-    transition: opacity 0.3s ease;
+    /* Don't block clicks */
 }
 
 @media (max-width: 600px) {
     .add-hint-text {
         font-size: 1.5rem;
-        top: 60px;
-        left: 20px;
     }
 }
+
+/* Note Stack Graphic */
+.note-stack {
+    position: relative;
+    width: 180px;
+    height: 180px;
+}
+
+
+
+/* Common style for note sheets in the stack */
+.note-sheet {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: #ffeb3b;
+    /* Bright Yellow */
+    border: 3px solid #000000;
+    border-radius: 4px;
+}
+
+/* The block simulates the thickness/back of the stack */
+.note-sheet.back {
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+    background: #fdd835;
+    /* Slightly darker yellow for depth */
+}
+
+/* The side depth filling */
+.note-sheet-side {
+    position: absolute;
+    top: 13px;
+    /* 3px border + 10px offset */
+    right: -3px;
+    width: 13px;
+    /* 10px offset + 3px border width */
+    height: 100%;
+    background: #fbc02d;
+    z-index: 1;
+    /* transform: skewY(45deg); A simpler block approach is safer for now */
+    display: none;
+    /* Let's stick to the 2-layer illustrative style which handles depth via offset */
+}
+
+/* The top curved sheet */
+.note-sheet.top {
+    top: 0;
+    left: 0;
+    z-index: 2;
+    z-index: 2;
+    border-bottom-left-radius: 60px;
+    /* The curve */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The Plus Icon inside the top note */
+.note-plus-icon {
+    font-size: 64px;
+    color: rgba(0, 0, 0, 0.2);
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.note-stack:hover .note-plus-icon {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.note-stack:hover .note-sheet.top {
+    animation: tilt-shaking 0.4s infinite;
+}
+
+@keyframes tilt-shaking {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(3deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+
+    75% {
+        transform: rotate(-3deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+
 
 /* Hidden Input for Mobile Keyboard/Clipboard */
 .hidden-input {
@@ -85,10 +226,14 @@ body {
     position: absolute;
     width: var(--note-width);
     min-height: var(--note-height);
-    background: var(--note-bg);
+    background: #ffeb3b;
+    /* Bright Yellow to match stack */
     padding: 16px;
     box-shadow: var(--note-shadow);
-    border-radius: 2px;
+    border: 3px solid #000000;
+    /* Match stack border */
+    border-radius: 4px;
+    /* Slight radius, but NO large curve */
     font-size: 14px;
     line-height: 1.5;
     word-wrap: break-word;
@@ -108,6 +253,43 @@ body {
     min-height: 100%;
     outline: none;
     cursor: text;
+}
+
+/* Selected Note Menu Container */
+.selected-note-menu {
+    position: absolute;
+    width: 180px;
+    /* Explicit width to match note */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+    z-index: 150;
+}
+
+/* Action FABs (inside the menu) */
+.action-fab {
+    position: static !important;
+    /* Force override of .fab's fixed positioning */
+    pointer-events: auto;
+    flex-shrink: 0;
+}
+
+.action-fab .material-icons {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Delete Button */
+.btn-delete {
+    /* animation removed */
+    transition: transform 0.2s;
+}
+
+/* Drag Button */
+.btn-drag {
+    cursor: grab;
+    /* animation removed */
+    transition: transform 0.2s;
 }
 
 /* Material Design FAB Buttons */

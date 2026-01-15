@@ -32,14 +32,27 @@
             spellcheck="false" @input="onInput($event)" @blur="onInputBlur($event)"
             aria-label="Type to create a new note">
 
-        <!-- Hint Text -->
+        <!-- Create Note Stack Button & Hint -->
+        <!-- Removed x-show="hintVisible" from container so stack is always visible -->
+        <div class="empty-state-container" @click="createNewNote()" title="Create new note">
+            <div class="note-stack">
+                <div class="note-sheet back"></div>
+                <div class="note-sheet top">
+                    <span class="material-icons note-plus-icon">add</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hint Text (Bottom Center) -->
+        <!-- Moved out of empty-state-container for independent positioning -->
         <div class="add-hint-text" x-show="hintVisible" x-transition.opacity>
-            Start Typing or Paste From Clipboard.
+            Start Typing, Paste From Clipboard or Press +
         </div>
 
         <!-- Sticky Notes Container -->
         <template x-for="note in notes" :key="note.id">
-            <div class="sticky-note" :style="`left: ${note.x}px; top: ${note.y}px;`" x-text="note.text">
+            <div class="sticky-note" :style="`left: ${note.x}px; top: ${note.y}px;`" x-text="note.text"
+                @click.stop="editNote(note)">
             </div>
         </template>
 
@@ -50,6 +63,23 @@
                 @input="updateEditingText($event.target.textContent)" @keydown="onEditingKeyDown($event)"
                 @blur="confirmEditing()">
             </div>
+        </div>
+
+        <!-- Selected Note Menu (FABs below the note) -->
+        <div class="selected-note-menu" x-show="editingNote" x-transition
+            :style="editingNote ? `left: ${editingNote.x}px; top: ${editingNote.y + 190}px;` : ''">
+
+            <!-- Delete Button -->
+            <button class="fab action-fab btn-delete" @mousedown.prevent @click.stop="deleteEditingNote()"
+                @mouseenter="onDeleteEnter()" @mouseleave="onDeleteLeave()">
+                <span class="material-icons" x-text="deleteIcon" :style="`opacity: ${iconOpacity}`">delete</span>
+            </button>
+
+            <!-- Drag Button -->
+            <button class="fab action-fab btn-drag" @mousedown.prevent @mousedown="onDragStart()" @mouseup="onDragEnd()"
+                @mouseleave="onDragEnd()">
+                <span class="material-icons" x-text="dragIcon" :style="`opacity: ${iconOpacity}`">pan_tool</span>
+            </button>
         </div>
 
         <!-- Search FAB Button -->
