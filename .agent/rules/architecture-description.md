@@ -4,7 +4,8 @@ trigger: always_on
 
 # App Architecture
 
-## General 
+## General
+
 - SPA
 - PWA
 - MVVM pattern
@@ -15,10 +16,12 @@ trigger: always_on
 - Google Material Design
 
 # IoC conventions
+
 - Alpine.init is the main object resolution root. All instantiation happen there.
 - app.js is the IoC container with Alpine.init logic and anonymous functions for lazy creation of objects
 
 #MVVM pattern conventions
+
 - alpine x-data objects are viewmodels
 - viewmodels are classes
 - view (html elements) are bound to public viewmodel properties
@@ -29,9 +32,11 @@ trigger: always_on
 - alpine's template mechanism is used where lazyly create sub viewmodels are expected
 
 # Dont's
+
 - do not access public static members of other classes (resoures should have been injected)
 
 ## Specific
+
 - storage backend will be localStorage abstracted into a localStorageRepository (repository pattern) for notes.
 - VmWhiteBoard is the main applications viewmodel
 - - search and about are bound to VmWhiteBoard

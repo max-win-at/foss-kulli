@@ -1,122 +1,220 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="description" content="Foss Kulli - A simple sticky notes app for your browser">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <meta
+      name="description"
+      content="Foss Kulli - A simple sticky notes app for your browser"
+    />
     <title>Foss Kulli - Sticky Notes</title>
 
     <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
 
     <!-- Material Icons -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/styles.css">
-</head>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
 
-<body>
+  <body>
     <!-- Main White Board -->
-    <div class="white-board" x-data="vmWhiteBoard()" @keydown.window="onKeyDown($event)" @paste.window="onPaste($event)"
-        @resize.window="rearrangeNotes()">
+    <div
+      class="white-board"
+      x-data="vmWhiteBoard()"
+      @keydown.window="onKeyDown($event)"
+      @paste.window="onPaste($event)"
+      @resize.window="rearrangeNotes()"
+    >
+      <!-- Hidden Input for Mobile Keyboard & Clipboard Support -->
+      <input
+        type="text"
+        class="hidden-input"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        @input="onInput($event)"
+        @blur="onInputBlur($event)"
+        aria-label="Type to create a new note"
+      />
 
-        <!-- Hidden Input for Mobile Keyboard & Clipboard Support -->
-        <input type="text" class="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off"
-            spellcheck="false" @input="onInput($event)" @blur="onInputBlur($event)"
-            aria-label="Type to create a new note">
-
-        <!-- Create Note Stack Button & Hint -->
-        <!-- Removed x-show="hintVisible" from container so stack is always visible -->
-        <div class="empty-state-container" @click="createNewNote()" title="Create new note">
-            <div class="note-stack">
-                <div class="note-sheet back"></div>
-                <div class="note-sheet top">
-                    <span class="material-icons note-plus-icon">add</span>
-                </div>
-            </div>
+      <!-- Create Note Stack Button & Hint -->
+      <!-- Removed x-show="hintVisible" from container so stack is always visible -->
+      <div
+        class="empty-state-container"
+        @click="createNewNote()"
+        title="Create new note"
+      >
+        <div class="note-stack">
+          <div class="note-sheet back"></div>
+          <div class="note-sheet top">
+            <span class="material-icons note-plus-icon">add</span>
+          </div>
         </div>
+      </div>
 
-        <!-- Hint Text (Bottom Center) -->
-        <!-- Moved out of empty-state-container for independent positioning -->
-        <div class="add-hint-text" x-show="hintVisible" x-transition.opacity>
-            Start Typing, Paste From Clipboard or Press +
-        </div>
+      <!-- Hint Text (Bottom Center) -->
+      <!-- Moved out of empty-state-container for independent positioning -->
+      <div class="add-hint-text" x-show="hintVisible" x-transition.opacity>
+        Start Typing, Paste From Clipboard or Press +
+      </div>
 
-        <!-- Sticky Notes Container -->
-        <template x-for="note in notes" :key="note.id">
-            <div class="sticky-note" :style="`left: ${note.x}px; top: ${note.y}px;`" x-text="note.text"
-                @click.stop="editNote(note)">
-            </div>
-        </template>
+      <!-- Sticky Notes Container -->
+      <template x-for="note in notes" :key="note.id">
+        <div
+          class="sticky-note"
+          :style="`left: ${note.x}px; top: ${note.y}px;`"
+          x-text="note.text"
+          @click.stop="editNote(note)"
+        ></div>
+      </template>
 
-        <!-- Currently Editing Note (immediate spawn with cursor) -->
-        <div class="sticky-note editing" x-show="editingNote" x-transition
-            :style="editingNote ? `left: ${editingNote.x}px; top: ${editingNote.y}px;` : ''">
-            <div contenteditable="true" class="note-editor" x-ref="noteEditor"
-                @input="updateEditingText($event.target.textContent)" @keydown="onEditingKeyDown($event)"
-                @blur="confirmEditing()">
-            </div>
-        </div>
+      <!-- Currently Editing Note (immediate spawn with cursor) -->
+      <div
+        class="sticky-note editing"
+        :class="{ 'deleting': isDeleting }"
+        x-show="editingNote"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 scale-90"
+        x-transition:enter-end="opacity-100 scale-100"
+        :style="editingNote ? `left: ${editingNote.x}px; top: ${editingNote.y}px;` : ''"
+      >
+        <div
+          contenteditable="true"
+          class="note-editor"
+          x-ref="noteEditor"
+          @input="updateEditingText($event.target.textContent)"
+          @keydown="onEditingKeyDown($event)"
+          @blur="!isDeleting && confirmEditing()"
+        ></div>
+        <!-- Added !isDeleting check to blur so it doesn't auto-save while fading out if focus is lost -->
+      </div>
 
-        <!-- Selected Note Menu (FABs below the note) -->
-        <div class="selected-note-menu" x-show="editingNote" x-transition
-            :style="editingNote ? `left: ${editingNote.x}px; top: ${editingNote.y + 190}px;` : ''">
-
-            <!-- Delete Button -->
-            <button class="fab action-fab btn-delete" @mousedown.prevent @click.stop="deleteEditingNote()"
-                @mouseenter="onDeleteEnter()" @mouseleave="onDeleteLeave()">
-                <span class="material-icons" x-text="deleteIcon" :style="`opacity: ${iconOpacity}`">delete</span>
-            </button>
-
-            <!-- Drag Button -->
-            <button class="fab action-fab btn-drag" @mousedown.prevent @mousedown="onDragStart()" @mouseup="onDragEnd()"
-                @mouseleave="onDragEnd()">
-                <span class="material-icons" x-text="dragIcon" :style="`opacity: ${iconOpacity}`">pan_tool</span>
-            </button>
-        </div>
-
-        <!-- Search FAB Button -->
-        <button class="fab fab-search" @click.stop="toggleSearch()" aria-label="Search notes">
-            <span class="material-icons">search</span>
+      <!-- Selected Note Menu (FABs below the note) -->
+      <div
+        class="selected-note-menu"
+        x-show="editingNote && !isDeleting"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 scale-90"
+        x-transition:enter-end="opacity-100 scale-100"
+        :style="editingNote ? `left: ${editingNote.x}px; top: ${editingNote.y + 190}px;` : ''"
+      >
+        <!-- Delete Button -->
+        <button
+          class="fab action-fab btn-delete"
+          @mousedown.prevent
+          @click.stop="deleteEditingNote()"
+          @mouseenter="onDeleteEnter()"
+          @mouseleave="onDeleteLeave()"
+        >
+          <span
+            class="material-icons"
+            x-text="deleteIcon"
+            :style="`opacity: ${iconOpacity}`"
+            >delete</span
+          >
         </button>
 
-        <!-- About FAB Button -->
-        <button class="fab fab-about" @click.stop="toggleAbout()" aria-label="About">
-            <span class="material-icons">info</span>
+        <!-- Drag Button -->
+        <button
+          class="fab action-fab btn-drag"
+          @mousedown.prevent
+          @mousedown="onDragStart()"
+          @mouseup="onDragEnd()"
+          @mouseleave="onDragEnd()"
+        >
+          <span
+            class="material-icons"
+            x-text="dragIcon"
+            :style="`opacity: ${iconOpacity}`"
+            >pan_tool</span
+          >
         </button>
+      </div>
 
-        <!-- Popup Backdrop (click to close) -->
-        <div class="popup-backdrop" x-show="isSearchOpen || isAboutOpen" @click="closePopups()" x-transition.opacity>
-        </div>
+      <!-- Search FAB Button -->
+      <button
+        class="fab fab-search"
+        @click.stop="toggleSearch()"
+        aria-label="Search notes"
+      >
+        <span class="material-icons">search</span>
+      </button>
 
-        <!-- Search Popup -->
-        <div class="popup popup-search" x-show="isSearchOpen" @click.stop x-transition>
-            <input type="text" placeholder="Search notes..." x-model="searchQuery" @keydown.escape="closePopups()"
-                x-ref="searchInput">
-        </div>
+      <!-- About FAB Button -->
+      <button
+        class="fab fab-about"
+        @click.stop="toggleAbout()"
+        aria-label="About"
+      >
+        <span class="material-icons">info</span>
+      </button>
 
-        <!-- About Popup -->
-        <div class="popup popup-about" x-show="isAboutOpen" @click.stop x-transition>
-            <h3>Foss Kulli</h3>
-            <p>A simple sticky notes app for your browser. Just start typing or paste from clipboard to create notes.
-            </p>
-            <p>Open source and privacy-focused. Your notes stay in your browser.</p>
-            <div class="version">Version 0.1.0</div>
-        </div>
+      <!-- Popup Backdrop (click to close) -->
+      <div
+        class="popup-backdrop"
+        x-show="isSearchOpen || isAboutOpen"
+        @click="closePopups()"
+        x-transition.opacity
+      ></div>
+
+      <!-- Search Popup -->
+      <div
+        class="popup popup-search"
+        x-show="isSearchOpen"
+        @click.stop
+        x-transition
+      >
+        <input
+          type="text"
+          placeholder="Search notes..."
+          x-model="searchQuery"
+          @keydown.escape="closePopups()"
+          x-ref="searchInput"
+        />
+      </div>
+
+      <!-- About Popup -->
+      <div
+        class="popup popup-about"
+        x-show="isAboutOpen"
+        @click.stop
+        x-transition
+      >
+        <h3>Foss Kulli</h3>
+        <p>
+          A simple sticky notes app for your browser. Just start typing or paste
+          from clipboard to create notes.
+        </p>
+        <p>Open source and privacy-focused. Your notes stay in your browser.</p>
+        <div class="version">Version 0.1.0</div>
+      </div>
     </div>
 
     <!-- Load app scripts first, then Alpine -->
     <script src="js/viewmodels/vm-sticky-note.js"></script>
     <script src="js/viewmodels/vm-white-board.js"></script>
     <script src="js/app.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</body>
-
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+  </body>
 </html>

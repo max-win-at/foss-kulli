@@ -14,8 +14,8 @@ let noteIdCounter = 0;
  * @returns {VmStickyNote}
  */
 function noteFactory(text, x, y) {
-    const id = `note-${++noteIdCounter}`;
-    return new VmStickyNote(id, text, x, y);
+  const id = `note-${++noteIdCounter}`;
+  return new VmStickyNote(id, text, x, y);
 }
 
 /**
@@ -23,7 +23,7 @@ function noteFactory(text, x, y) {
  * This is the function called by x-data="vmWhiteBoard()"
  */
 function vmWhiteBoard() {
-    return new VmWhiteBoard(noteFactory);
+  return new VmWhiteBoard(noteFactory);
 }
 
 // Make available globally for Alpine.js
