@@ -480,3 +480,207 @@ body {
   margin-top: 10px; /* Space for the date header */
   white-space: pre-wrap;
 }
+
+/* ================================
+   PWA Specific Styles
+   ================================ */
+
+/* PWA Install Button */
+.pwa-install-button {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #6200ee, #3700b3);
+  color: white;
+  border: none;
+  border-radius: 28px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(98, 0, 238, 0.4);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  font-family: "Roboto", sans-serif;
+}
+
+.pwa-install-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(98, 0, 238, 0.5);
+}
+
+.pwa-install-button:active {
+  transform: translateY(0);
+}
+
+.pwa-install-button .material-icons {
+  font-size: 20px;
+}
+
+/* PWA Update Banner */
+.pwa-update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #00c853, #00a843);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-family: "Roboto", sans-serif;
+}
+
+.pwa-update-banner .update-btn {
+  padding: 8px 16px;
+  background: white;
+  color: #00a843;
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pwa-update-banner .update-btn:hover {
+  background: #f0f0f0;
+  transform: scale(1.05);
+}
+
+.pwa-update-banner .dismiss-btn {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pwa-update-banner .dismiss-btn:hover {
+  opacity: 1;
+}
+
+.pwa-update-banner .dismiss-btn .material-icons {
+  font-size: 20px;
+}
+
+/* Offline Indicator */
+.offline-indicator {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10000;
+  font-family: "Roboto", sans-serif;
+}
+
+.offline-indicator .material-icons {
+  font-size: 20px;
+}
+
+/* Standalone mode adjustments (when installed as PWA) */
+@media (display-mode: standalone) {
+  /* Add safe area padding for notched devices */
+  .white-board {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Hide install button when already installed */
+  .pwa-install-button {
+    display: none !important;
+  }
+
+  /* Adjust FAB positions for safe areas */
+  .fab {
+    bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .fab-group.right {
+    right: calc(24px + env(safe-area-inset-right));
+  }
+
+  /* Adjust search and nav for safe areas */
+  .nav-bar {
+    top: calc(16px + env(safe-area-inset-top));
+    right: calc(16px + env(safe-area-inset-right));
+  }
+}
+
+/* iOS specific adjustments */
+@supports (-webkit-touch-callout: none) {
+  /* Prevent rubber band scrolling on iOS */
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix 100vh issue on iOS */
+  .white-board {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Android/PWA improvements */
+@media screen and (max-width: 768px) {
+  .pwa-install-button {
+    bottom: 80px;
+    right: 16px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .pwa-install-button .install-text {
+    display: none;
+  }
+
+  .pwa-install-button .material-icons {
+    font-size: 24px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .pwa-install-button {
+    background: #6200ee;
+    border: 2px solid white;
+  }
+
+  .offline-indicator {
+    background: #d32f2f;
+    border-top: 2px solid white;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .pwa-install-button,
+  .pwa-update-banner .update-btn {
+    transition: none;
+  }
+}

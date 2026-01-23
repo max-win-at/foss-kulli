@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="noteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffa5"/>
+      <stop offset="100%" style="stop-color:#ffeb3b"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <circle cx="48" cy="48" r="44" fill="#6200ee"/>
+  
+  <!-- Sticky note -->
+  <rect x="24" y="24" width="48" height="48" rx="4" fill="url(#noteGrad)"/>
+  
+  <!-- Lines -->
+  <line x1="32" y1="40" x2="64" y2="40" stroke="#e0e0e0" stroke-width="2"/>
+  <line x1="32" y1="52" x2="56" y2="52" stroke="#e0e0e0" stroke-width="2"/>
+  
+  <!-- Plus -->
+  <circle cx="68" cy="68" r="16" fill="#00c853"/>
+  <rect x="64" y="58" width="8" height="20" rx="2" fill="white"/>
+  <rect x="58" y="64" width="20" height="8" rx="2" fill="white"/>
+</svg>

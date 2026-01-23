@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="noteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffa5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffeb3b;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="4" dy="8" stdDeviation="8" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#6200ee"/>
+  
+  <!-- Sticky note stack - back note -->
+  <rect x="140" y="140" width="200" height="200" rx="8" ry="8" 
+        fill="#fff59d" transform="rotate(-8 240 240)" filter="url(#shadow)"/>
+  
+  <!-- Sticky note stack - middle note -->
+  <rect x="150" y="130" width="200" height="200" rx="8" ry="8" 
+        fill="#ffee58" transform="rotate(4 250 230)" filter="url(#shadow)"/>
+  
+  <!-- Sticky note stack - front note -->
+  <rect x="156" y="156" width="200" height="200" rx="8" ry="8" 
+        fill="url(#noteGradient)" filter="url(#shadow)"/>
+  
+  <!-- Note lines on front note -->
+  <line x1="180" y1="200" x2="320" y2="200" stroke="#e0e0e0" stroke-width="3" stroke-linecap="round"/>
+  <line x1="180" y1="240" x2="300" y2="240" stroke="#e0e0e0" stroke-width="3" stroke-linecap="round"/>
+  <line x1="180" y1="280" x2="280" y2="280" stroke="#e0e0e0" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Plus icon -->
+  <circle cx="380" cy="380" r="56" fill="#00c853"/>
+  <rect x="368" y="348" width="24" height="64" rx="4" fill="white"/>
+  <rect x="348" y="368" width="64" height="24" rx="4" fill="white"/>
+</svg>

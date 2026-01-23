@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="noteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffa5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffeb3b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Safe zone background (maskable icons need padding) -->
+  <rect width="512" height="512" fill="#6200ee"/>
+  
+  <!-- Sticky note stack - back note (scaled down for safe zone) -->
+  <rect x="156" y="156" width="160" height="160" rx="6" ry="6" 
+        fill="#fff59d" transform="rotate(-6 236 236)"/>
+  
+  <!-- Sticky note stack - middle note -->
+  <rect x="166" y="150" width="160" height="160" rx="6" ry="6" 
+        fill="#ffee58" transform="rotate(3 246 230)"/>
+  
+  <!-- Sticky note stack - front note -->
+  <rect x="176" y="176" width="160" height="160" rx="6" ry="6" 
+        fill="url(#noteGradient)"/>
+  
+  <!-- Note lines on front note -->
+  <line x1="196" y1="212" x2="306" y2="212" stroke="#e0e0e0" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="196" y1="244" x2="290" y2="244" stroke="#e0e0e0" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="196" y1="276" x2="274" y2="276" stroke="#e0e0e0" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Plus icon (smaller for maskable) -->
+  <circle cx="356" cy="356" r="44" fill="#00c853"/>
+  <rect x="346" y="328" width="20" height="56" rx="3" fill="white"/>
+  <rect x="328" y="346" width="56" height="20" rx="3" fill="white"/>
+</svg>
