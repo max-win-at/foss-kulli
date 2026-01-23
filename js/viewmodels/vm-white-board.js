@@ -37,6 +37,7 @@ class VmWhiteBoard {
     this.isSearchOpen = false;
     this.isAboutOpen = false;
     this.searchQuery = "";
+    this._originalPositions = null; // Store original positions during search
 
     // Currently editing note (spawned immediately on typing)
     this.editingNote = null;
@@ -60,10 +61,82 @@ class VmWhiteBoard {
   }
 
   /**
+   * Apply search filter and reposition matching notes
+   * Called when searchQuery changes
+   */
+  applySearchFilter() {
+    if (!this.searchQuery || this.searchQuery.trim() === "") {
+      // Restore original positions when clearing search
+      this.restorePositions();
+      return;
+    }
+
+    // Save original positions if not already saved
+    if (!this._originalPositions) {
+      this._originalPositions = new Map();
+      for (const note of this.notes) {
+        this._originalPositions.set(note.id, { x: note.x, y: note.y });
+      }
+    }
+
+    // Get matching notes and sort by date (newest first)
+    const matchingNotes = this.notes
+      .filter((note) => this.matchesSearch(note))
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    // Reposition matching notes from the beginning
+    const currentViewportWidth = this.viewportWidth;
+    let currentX = VmWhiteBoard.INITIAL_X;
+    let currentY = VmWhiteBoard.INITIAL_Y;
+
+    for (const note of matchingNotes) {
+      // Check if note would overflow current row
+      if (
+        currentX + VmWhiteBoard.NOTE_WIDTH >
+        currentViewportWidth - VmWhiteBoard.NOTE_GAP
+      ) {
+        // Move to next row
+        currentY += VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
+
+        // Smart Wrap logic
+        const stackBottom = 24 + 180;
+        if (currentY > stackBottom) {
+          currentX = VmWhiteBoard.NOTE_GAP;
+        } else {
+          currentX = VmWhiteBoard.INITIAL_X;
+        }
+      }
+
+      note.x = currentX;
+      note.y = currentY;
+
+      currentX += VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
+    }
+  }
+
+  /**
+   * Restore original note positions after search is cleared
+   */
+  restorePositions() {
+    if (!this._originalPositions) return;
+
+    for (const note of this.notes) {
+      const original = this._originalPositions.get(note.id);
+      if (original) {
+        note.x = original.x;
+        note.y = original.y;
+      }
+    }
+
+    this._originalPositions = null;
+  }
+
+  /**
    * Clear the search query
    */
   clearSearch() {
     this.searchQuery = "";
+    this.restorePositions();
   }
 
   /**
@@ -79,10 +152,17 @@ class VmWhiteBoard {
       this.updateViewport(width);
     });
 
-    // 2. Clean up old trash
+    // 2. Watch for search query changes
+    Alpine.effect(() => {
+      // Accessing searchQuery creates a dependency
+      const query = this.searchQuery;
+      this.applySearchFilter();
+    });
+
+    // 3. Clean up old trash
     this._srvLocalStorage.cleanupTrash(30);
 
-    // 3. Load persisted notes
+    // 4. Load persisted notes
     const loadedData = this._srvLocalStorage.loadNotes();
     if (loadedData && loadedData.length > 0) {
       this.notes = loadedData.map(
