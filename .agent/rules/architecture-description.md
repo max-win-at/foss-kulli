@@ -37,7 +37,7 @@ trigger: always_on
 
 ## Specific
 
-- storage backend will be localStorage abstracted into a localStorageRepository (repository pattern) for notes.
+- storage backend will be localStorage abstracted into a SrvLocalStorage (repository pattern) for notes.
 - VmWhiteBoard is the main applications viewmodel
 - - search and about are bound to VmWhiteBoard
 - - creation of visual sticky notes is bound to VmWhiteBoard's public property stickyNotes with VmStickyNote viewmodels (lazy factory methods)

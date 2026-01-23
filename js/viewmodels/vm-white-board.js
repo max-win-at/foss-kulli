@@ -11,12 +11,19 @@ class VmWhiteBoard {
 
   /**
    * @param {Function} noteFactory - Factory function to create notes: (text, x, y, id) => VmStickyNote
+  /**
+   * @param {Function} noteFactory - Factory function to create notes: (text, x, y, id) => VmStickyNote
+   * @param {SrvLocalStorage} srvLocalStorage - Persistence service
+   * @param {VmDom} vmDom - DOM ViewModel & Service
    */
-  constructor(noteFactory) {
+  constructor(noteFactory, srvLocalStorage, vmDom) {
     this._noteFactory = noteFactory;
+    this._srvLocalStorage = srvLocalStorage;
+    this._vmDom = vmDom;
 
     // Initialize reactive state
     this.hintVisible = true;
+    this.viewportWidth = 800; // Default
 
     // Icon Animation State
     this.deleteIcon = "delete";
@@ -24,8 +31,7 @@ class VmWhiteBoard {
     this.iconOpacity = 1;
     this.iconInterval = null;
 
-    // Note: Do NOT bind methods here manually. Alpine proxies the instance,
-    // and manual binding to 'this' (the raw instance) breaks reactivity.
+    // Note: Do NOT bind methods here manually. Alpine proxies the instance.
 
     this.notes = [];
     this.isSearchOpen = false;
@@ -38,10 +44,68 @@ class VmWhiteBoard {
   }
 
   /**
+   * Check if a note matches the current search query
+   * @param {VmStickyNote} note
+   * @returns {boolean}
+   */
+  matchesSearch(note) {
+    if (!this.searchQuery || this.searchQuery.trim() === "") {
+      return true;
+    }
+    if (!note || !note.text) {
+      return false;
+    }
+    const query = this.searchQuery.toLowerCase();
+    return note.text.toLowerCase().includes(query);
+  }
+
+  /**
+   * Clear the search query
+   */
+  clearSearch() {
+    this.searchQuery = "";
+  }
+
+  /**
    * Alpine.js init method - called automatically
    */
   init() {
-    // Resize handled via @resize.window in HTML binding
+    // 1. Subscribe to VmDom property changes
+    // Since vmDom is reactive, we can use Alpine.effect to track changes
+    Alpine.effect(() => {
+      // Accessing the property creates a dependency
+      const width = this._vmDom.viewportWidth;
+      // Update local state and react
+      this.updateViewport(width);
+    });
+
+    // 2. Clean up old trash
+    this._srvLocalStorage.cleanupTrash(30);
+
+    // 3. Load persisted notes
+    const loadedData = this._srvLocalStorage.loadNotes();
+    if (loadedData && loadedData.length > 0) {
+      this.notes = loadedData.map(
+        (data) =>
+          new VmStickyNote(data.id, data.text, data.x, data.y, data.createdAt),
+      );
+    }
+  }
+
+  /**
+   * Update viewport width
+   * @param {number} width
+   */
+  updateViewport(width) {
+    this.viewportWidth = width;
+    this.rearrangeNotes();
+  }
+
+  /**
+   * Persist current notes
+   */
+  save() {
+    this._srvLocalStorage.saveNotes(this.notes);
   }
 
   /**
@@ -93,16 +157,11 @@ class VmWhiteBoard {
     this.$nextTick(() => {
       const editEl = this.$refs.noteEditor;
       if (editEl) {
-        // Set initial text content directly (not via binding to avoid cursor reset)
+        // Set initial text content directly
         editEl.textContent = initialChar;
         editEl.focus();
-        // Move cursor to end
-        const range = document.createRange();
-        range.selectNodeContents(editEl);
-        range.collapse(false);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
+        // Move cursor to end using service
+        this._vmDom.moveCursorToEnd(editEl);
       }
     });
   }
@@ -119,6 +178,7 @@ class VmWhiteBoard {
 
     // Remove from list (will be re-added on confirm)
     this.notes = this.notes.filter((n) => n.id !== note.id);
+    this.save();
 
     // set as editing
     this.editingNote = note;
@@ -130,14 +190,8 @@ class VmWhiteBoard {
       if (editEl) {
         editEl.textContent = note.text;
         editEl.focus();
-        // Select all text or move to end?
-        // Let's move to end
-        const range = document.createRange();
-        range.selectNodeContents(editEl);
-        range.collapse(false);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
+        // Move cursor to end using service
+        this._vmDom.moveCursorToEnd(editEl);
       }
     });
   }
@@ -158,6 +212,7 @@ class VmWhiteBoard {
   confirmEditing() {
     if (this.editingNote && this.editingNote.text.trim().length > 0) {
       this.notes.push(this.editingNote);
+      this.save(); // Persist
     }
     this.editingNote = null;
     this.stopIconAnimation(); // Stop anims
@@ -167,19 +222,9 @@ class VmWhiteBoard {
    * Cancel editing and discard the note
    */
   cancelEditing() {
-    // If it was an existing note (has ID and text), restore it
-    // Check if we should restore?
-    // Logic: if it has an id, it was likely existing. New notes might have id too though if factory makes them.
-    // We can check if it was in the list? No we removed it.
-    // Simply push it back if it has content?
-    // Or assume "Escape" means "Revert to original state"?
-    // If it's a new note (empty start), discard.
-    // If it was existing, we should probably put it back.
-    // For simplicity: if it has text, put it back.
     if (this.editingNote && this.editingNote.text.trim().length > 0) {
       this.notes.push(this.editingNote);
     }
-
     this.editingNote = null;
     this.stopIconAnimation(); // Stop anims
   }
@@ -193,8 +238,12 @@ class VmWhiteBoard {
 
     // Wait for animation to finish
     setTimeout(() => {
+      // Move to trash before removing
+      this._srvLocalStorage.moveToTrash(this.editingNote);
+
       this.editingNote = null;
       this.isDeleting = false;
+      this.save();
     }, 300);
   }
 
@@ -265,6 +314,7 @@ class VmWhiteBoard {
   updateEditingText(text) {
     if (this.editingNote) {
       this.editingNote.text = text;
+      // No save here (wait for commit)
     }
   }
 
@@ -367,6 +417,7 @@ class VmWhiteBoard {
     const position = this.getNextNotePosition();
     const note = this._noteFactory(text, position.x, position.y);
     this.notes.push(note);
+    this.save(); // Persist
   }
 
   /**
@@ -384,25 +435,19 @@ class VmWhiteBoard {
       return { x: VmWhiteBoard.INITIAL_X, y: VmWhiteBoard.INITIAL_Y };
     }
 
-    const viewportWidth = window.innerWidth;
+    const currentViewportWidth = this.viewportWidth;
 
-    // Find rightmost note
-    let rightmostNote = allNotes[0];
-    for (const note of allNotes) {
-      if (note.x > rightmostNote.x) {
-        rightmostNote = note;
-      }
-    }
+    // Use the last note in the list as the reference
+    const lastNote = allNotes[allNotes.length - 1];
 
-    // Calculate position to the right of rightmost note
-    const newX =
-      rightmostNote.x + VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
-    const newY = rightmostNote.y;
+    // Calculate position to the right of the last note
+    const newX = lastNote.x + VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
+    const newY = lastNote.y;
 
     // Check if it would overflow
     if (
       newX + VmWhiteBoard.NOTE_WIDTH <=
-      viewportWidth - VmWhiteBoard.NOTE_GAP
+      currentViewportWidth - VmWhiteBoard.NOTE_GAP
     ) {
       return { x: newX, y: newY };
     }
@@ -441,7 +486,7 @@ class VmWhiteBoard {
 
     if (allNotes.length === 0) return;
 
-    const viewportWidth = window.innerWidth;
+    const currentViewportWidth = this.viewportWidth;
     let currentX = VmWhiteBoard.INITIAL_X;
     let currentY = VmWhiteBoard.INITIAL_Y;
 
@@ -449,7 +494,7 @@ class VmWhiteBoard {
       // Check if note would overflow current row
       if (
         currentX + VmWhiteBoard.NOTE_WIDTH >
-        viewportWidth - VmWhiteBoard.NOTE_GAP
+        currentViewportWidth - VmWhiteBoard.NOTE_GAP
       ) {
         // Move to next row
         currentY += VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
@@ -468,8 +513,6 @@ class VmWhiteBoard {
 
       currentX += VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
     }
+    this.save(); // Persist positions after rearrange
   }
 }
-
-// Make available globally for non-module scripts
-window.VmWhiteBoard = VmWhiteBoard;

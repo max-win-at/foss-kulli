@@ -33,17 +33,17 @@
     <link rel="stylesheet" href="css/styles.css" />
   </head>
 
-  <body>
+  <body x-data="vmDom" @resize.window="onResize()">
     <!-- Main White Board -->
     <div
       class="white-board"
-      x-data="vmWhiteBoard()"
+      x-data="vmWhiteBoard"
       @keydown.window="onKeyDown($event)"
       @paste.window="onPaste($event)"
-      @resize.window="rearrangeNotes()"
     >
       <!-- Hidden Input for Mobile Keyboard & Clipboard Support -->
       <input
+        id="invisible-input"
         type="text"
         class="hidden-input"
         autocomplete="off"
@@ -81,9 +81,12 @@
         <div
           class="sticky-note"
           :style="`left: ${note.x}px; top: ${note.y}px;`"
-          x-text="note.text"
+          x-show="matchesSearch(note)"
           @click.stop="editNote(note)"
-        ></div>
+        >
+          <div class="note-date-header" x-text="note.formattedDate"></div>
+          <div class="note-content" x-text="note.text"></div>
+        </div>
       </template>
 
       <!-- Currently Editing Note (immediate spawn with cursor) -->
@@ -182,13 +185,23 @@
         @click.stop
         x-transition
       >
-        <input
-          type="text"
-          placeholder="Search notes..."
-          x-model="searchQuery"
-          @keydown.escape="closePopups()"
-          x-ref="searchInput"
-        />
+        <div class="search-input-wrapper">
+          <input
+            type="text"
+            placeholder="Search notes..."
+            x-model="searchQuery"
+            @keydown.escape="closePopups()"
+            x-ref="searchInput"
+          />
+          <button
+            class="search-clear-btn"
+            x-show="searchQuery.length > 0"
+            @click="clearSearch()"
+            aria-label="Clear search"
+          >
+            <span class="material-icons">close</span>
+          </button>
+        </div>
       </div>
 
       <!-- About Popup -->
@@ -209,6 +222,8 @@
     </div>
 
     <!-- Load app scripts first, then Alpine -->
+    <script src="js/services/srv-local-storage.js"></script>
+    <script src="js/viewmodels/vm-dom.js"></script>
     <script src="js/viewmodels/vm-sticky-note.js"></script>
     <script src="js/viewmodels/vm-white-board.js"></script>
     <script src="js/app.js"></script>

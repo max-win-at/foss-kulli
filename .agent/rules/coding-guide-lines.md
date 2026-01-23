@@ -13,4 +13,5 @@ trigger: always_on
 - model classes are calles MdlModelName
 - model file names are models/model-name.js
 - do not use window reference in classes
+- do not make object globally available via reference augmentation on the window or the document object
 - implement all events via alpine mechanisms
