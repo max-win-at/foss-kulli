@@ -101,8 +101,7 @@ class PWAManager {
       installBtn.id = 'pwa-install-btn';
       installBtn.className = 'pwa-install-button';
       installBtn.innerHTML = `
-        <span class="material-icons">install_mobile</span>
-        <span class="install-text">Install App</span>
+        <span class="material-icons">download</span>
       `;
       installBtn.setAttribute('aria-label', 'Install Foss Kulli app');
       

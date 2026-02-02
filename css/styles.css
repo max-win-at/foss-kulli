@@ -98,7 +98,11 @@ body {
   font-weight: 500;
   color: #b0bec5;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  /* Allow wrapping on small screens */
+  max-width: calc(100% - 180px);
+  /* Leave space for FABs on both sides */
+  padding: 0 16px;
   z-index: 50;
   pointer-events: none;
   /* Don't block clicks */
@@ -106,7 +110,16 @@ body {
 
 @media (max-width: 600px) {
   .add-hint-text {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    max-width: calc(100% - 160px);
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 400px) {
+  .add-hint-text {
+    font-size: 0.75rem;
+    max-width: calc(100% - 140px);
   }
 }
 
@@ -484,39 +497,51 @@ body {
    PWA Specific Styles
    ================================ */
 
-/* PWA Install Button */
+/* PWA Install Button - FAB style to match search button */
 .pwa-install-button {
   position: fixed;
   bottom: 100px;
+  /* Above search button (24px + 56px FAB + 20px margin) */
   right: 24px;
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 50%;
+  background: #4caf50;
+  /* Green color */
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #6200ee, #3700b3);
-  color: white;
-  border: none;
-  border-radius: 28px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(98, 0, 238, 0.4);
-  transition: all 0.2s ease;
-  z-index: 1000;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  z-index: 100;
   font-family: "Roboto", sans-serif;
+  padding: 0;
 }
 
 .pwa-install-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(98, 0, 238, 0.5);
+  background: #388e3c;
+  /* Darker green on hover */
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
 }
 
 .pwa-install-button:active {
-  transform: translateY(0);
+  transform: scale(0.95);
 }
 
 .pwa-install-button .material-icons {
-  font-size: 20px;
+  font-size: 24px;
+}
+
+/* Hide the text label - only show icon */
+.pwa-install-button .install-text {
+  display: none;
 }
 
 /* PWA Update Banner */
