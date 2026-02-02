@@ -4,12 +4,21 @@
  */
 
 document.addEventListener("alpine:init", () => {
-  // 1. Instantiate Services/ViewModels
-  const srvLocalStorage = new SrvLocalStorage();
-  // Create VmDom and wrap in Alpine.reactive to allow subscription in VmWhiteBoard
-  const vmDom = Alpine.reactive(new VmDom());
+  // 1. Configuration
+  const whiteBoardConfig = {
+    noteWidth: 180,
+    noteHeight: 180,
+    noteGap: 20,
+    initialX: 240, // 24px (left) + 180px (width) + 36px (gap)
+    initialY: 24,  // Align with top of stack
+  };
 
-  // 2. Define Factories
+  // 2. Instantiate Services/ViewModels with constructor parameter injection
+  const srvLocalStorage = new SrvLocalStorage();
+  // Create VmDom with injected window/document and wrap in Alpine.reactive
+  const vmDom = Alpine.reactive(new VmDom(window, document));
+
+  // 3. Define Factories
   // Initialize counter based on existing notes to avoid duplicate IDs
   const existingNotes = srvLocalStorage.loadNotes();
   let noteIdCounter = 0;
@@ -34,14 +43,15 @@ document.addEventListener("alpine:init", () => {
     return new VmStickyNote(id, text, x, y);
   };
 
-  // 3. Create Singleton ViewModels
+  // 4. Create Singleton ViewModels with injected dependencies
   const vmWhiteBoardInstance = new VmWhiteBoard(
     noteFactory,
     srvLocalStorage,
     vmDom,
+    whiteBoardConfig,
   );
 
-  // 4. Publish via Alpine.data
+  // 5. Publish via Alpine.data
   // Using a closure to return the singleton instance
   Alpine.data("vmWhiteBoard", () => vmWhiteBoardInstance);
   Alpine.data("vmDom", () => vmDom);

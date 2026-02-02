@@ -1,0 +1,11 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "npx vitest": true,
+        "npx serve": true,
+        "timeout": true,
+        "/^cd /mnt/c/Users/wintemar/source/foss-kulli && node -e \"console\\.log\\('node working'\\)\" && npx vitest run tests/vm-white-board\\.test\\.js --reporter=basic 2>&1 \\| head -100$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

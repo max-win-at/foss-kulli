@@ -3,9 +3,16 @@
  * Abstracts window/document interactions and provides reactive viewport state
  */
 class VmDom {
-  constructor() {
-    this.viewportWidth = window.innerWidth;
-    this.viewportHeight = window.innerHeight;
+  /**
+   * @param {Window} windowRef - Window object for viewport dimensions
+   * @param {Document} documentRef - Document object for DOM operations
+   */
+  constructor(windowRef, documentRef) {
+    this._window = windowRef;
+    this._document = documentRef;
+    // Direct properties for Alpine reactivity
+    this.viewportWidth = this._window.innerWidth;
+    this.viewportHeight = this._window.innerHeight;
   }
 
   /**
@@ -19,8 +26,8 @@ class VmDom {
    * Handle resize events
    */
   onResize() {
-    this.viewportWidth = window.innerWidth;
-    this.viewportHeight = window.innerHeight;
+    this.viewportWidth = this._window.innerWidth;
+    this.viewportHeight = this._window.innerHeight;
   }
 
   /**
@@ -29,14 +36,11 @@ class VmDom {
    */
   moveCursorToEnd(element) {
     if (!element) return;
-    const range = document.createRange();
+    const range = this._document.createRange();
     range.selectNodeContents(element);
     range.collapse(false);
-    const sel = window.getSelection();
+    const sel = this._window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
   }
 }
-
-// Make available globally for non-module scripts (if needed)
-window.VmDom = VmDom;

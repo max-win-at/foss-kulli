@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Test configuration - matches the values previously defined as static constants
+const TEST_CONFIG = {
+  noteWidth: 180,
+  noteHeight: 180,
+  noteGap: 20,
+  initialX: 240,
+  initialY: 24,
+};
+
 /**
  * Helper: creates a VmWhiteBoard instance with mock dependencies.
  */
@@ -21,10 +30,13 @@ function createBoard(opts = {}) {
 
   const vmDom = { viewportWidth: 1024, viewportHeight: 768 };
 
+  const config = opts.config || TEST_CONFIG;
+
   const board = new VmWhiteBoard(
     opts.noteFactory || noteFactory,
     opts.srvLocalStorage || srvLocalStorage,
     vmDom,
+    config,
   );
 
   // Override Alpine-specific methods that don't exist in tests
@@ -34,7 +46,7 @@ function createBoard(opts = {}) {
   // Set a usable viewport width
   board.viewportWidth = opts.viewportWidth || 1024;
 
-  return { board, srvLocalStorage, vmDom, noteFactory: opts.noteFactory || noteFactory };
+  return { board, srvLocalStorage, vmDom, noteFactory: opts.noteFactory || noteFactory, config };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -121,14 +133,14 @@ describe('VmWhiteBoard', () => {
   // ────────────────────────────────────────────────────────────
 
   describe('getNextNotePosition', () => {
-    it('returns INITIAL_X, INITIAL_Y when no notes exist', () => {
+    it('returns initialX, initialY when no notes exist', () => {
       const { board } = createBoard();
 
       const pos = board.getNextNotePosition();
 
       expect(pos).toEqual({
-        x: VmWhiteBoard.INITIAL_X,
-        y: VmWhiteBoard.INITIAL_Y,
+        x: TEST_CONFIG.initialX,
+        y: TEST_CONFIG.initialY,
       });
     });
 
@@ -138,7 +150,7 @@ describe('VmWhiteBoard', () => {
 
       const pos = board.getNextNotePosition();
 
-      expect(pos.x).toBe(240 + VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP);
+      expect(pos.x).toBe(240 + TEST_CONFIG.noteWidth + TEST_CONFIG.noteGap);
       expect(pos.y).toBe(24);
     });
 
@@ -154,21 +166,21 @@ describe('VmWhiteBoard', () => {
       expect(pos.y).toBeGreaterThan(24);
     });
 
-    it('uses INITIAL_X for wrapped rows beside the stack area', () => {
+    it('uses initialX for wrapped rows beside the stack area', () => {
       const { board } = createBoard({ viewportWidth: 500 });
       board.viewportWidth = 500;
-      // Note at y=24 (within stack area), wrapping keeps INITIAL_X
+      // Note at y=24 (within stack area), wrapping keeps initialX
       board.notes = [new VmStickyNote('n1', 'Hi', 300, 24)];
 
       const pos = board.getNextNotePosition();
       const stackBottom = 24 + 180; // 204
 
-      // If nextRowY <= stackBottom, startX = INITIAL_X
-      // nextRowY = 24 + 180 + 20 = 224 > 204, so it's below stack -> NOTE_GAP
-      expect(pos.x).toBe(VmWhiteBoard.NOTE_GAP);
+      // If nextRowY <= stackBottom, startX = initialX
+      // nextRowY = 24 + 180 + 20 = 224 > 204, so it's below stack -> noteGap
+      expect(pos.x).toBe(TEST_CONFIG.noteGap);
     });
 
-    it('uses NOTE_GAP for wrapped rows below the stack area', () => {
+    it('uses noteGap for wrapped rows below the stack area', () => {
       const { board } = createBoard({ viewportWidth: 500 });
       board.viewportWidth = 500;
       // Place note well below the stack
@@ -177,18 +189,21 @@ describe('VmWhiteBoard', () => {
       const pos = board.getNextNotePosition();
 
       // nextRowY = 300 + 180 + 20 = 500, well below stackBottom (204)
-      expect(pos.x).toBe(VmWhiteBoard.NOTE_GAP);
+      expect(pos.x).toBe(TEST_CONFIG.noteGap);
     });
 
     it('includes the editing note in position calculations', () => {
+      // With the new approach, editingNote is in the notes array, so
+      // getNextNotePosition automatically considers it
       const { board } = createBoard();
-      board.notes = [];
-      board.editingNote = new VmStickyNote('editing', 'Draft', 240, 24);
+      const editingNote = new VmStickyNote('editing', 'Draft', 240, 24);
+      board.notes = [editingNote];
+      board.editingNote = editingNote;
 
       const pos = board.getNextNotePosition();
 
-      // Should calculate relative to the editing note, not return INITIAL
-      expect(pos.x).toBe(240 + VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP);
+      // Should calculate relative to the editing note
+      expect(pos.x).toBe(240 + TEST_CONFIG.noteWidth + TEST_CONFIG.noteGap);
     });
 
     it('handles multiple notes filling a row', () => {
@@ -202,7 +217,7 @@ describe('VmWhiteBoard', () => {
 
       const pos = board.getNextNotePosition();
       // 440 + 180 + 20 = 640 => 640 + 180 = 820 > 800 - 20 = 780 → wraps
-      expect(pos.y).toBe(24 + VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP);
+      expect(pos.y).toBe(24 + TEST_CONFIG.noteHeight + TEST_CONFIG.noteGap);
     });
   });
 
@@ -230,11 +245,11 @@ describe('VmWhiteBoard', () => {
 
       board.rearrangeNotes();
 
-      // First note starts at INITIAL_X, INITIAL_Y
-      expect(board.notes[0].x).toBe(VmWhiteBoard.INITIAL_X);
-      expect(board.notes[0].y).toBe(VmWhiteBoard.INITIAL_Y);
+      // First note starts at initialX, initialY
+      expect(board.notes[0].x).toBe(TEST_CONFIG.initialX);
+      expect(board.notes[0].y).toBe(TEST_CONFIG.initialY);
       // Subsequent notes are positioned correctly
-      expect(board.notes[1].y).toBeGreaterThanOrEqual(VmWhiteBoard.INITIAL_Y);
+      expect(board.notes[1].y).toBeGreaterThanOrEqual(TEST_CONFIG.initialY);
     });
 
     it('calls save() after rearranging', () => {
@@ -247,24 +262,27 @@ describe('VmWhiteBoard', () => {
     });
 
     it('includes the editing note in the layout', () => {
+      // With the new approach, editingNote is in the notes array
       const { board } = createBoard({ viewportWidth: 1024 });
       board.viewportWidth = 1024;
-      board.notes = [new VmStickyNote('n1', 'A', 0, 0)];
-      board.editingNote = new VmStickyNote('editing', 'Draft', 0, 0);
+      const note1 = new VmStickyNote('n1', 'A', 0, 0);
+      const editingNote = new VmStickyNote('editing', 'Draft', 0, 0);
+      board.notes = [note1, editingNote];
+      board.editingNote = editingNote;
 
       board.rearrangeNotes();
 
       // Both notes should be repositioned
-      expect(board.notes[0].x).toBe(VmWhiteBoard.INITIAL_X);
-      expect(board.editingNote.x).toBe(
-        VmWhiteBoard.INITIAL_X + VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP,
+      expect(board.notes[0].x).toBe(TEST_CONFIG.initialX);
+      expect(board.notes[1].x).toBe(
+        TEST_CONFIG.initialX + TEST_CONFIG.noteWidth + TEST_CONFIG.noteGap,
       );
     });
 
     it('applies Smart Wrap below the stack area', () => {
       const { board } = createBoard({ viewportWidth: 460 });
       board.viewportWidth = 460;
-      // With viewport=460, INITIAL_X=240, one note fits per row in the stack zone
+      // With viewport=460, initialX=240, one note fits per row in the stack zone
       // Layout: n1 at (240,24), n2 wraps to (20,224), n3 fits at (220,224)
       board.notes = [
         new VmStickyNote('n1', 'A', 0, 0),
@@ -276,12 +294,12 @@ describe('VmWhiteBoard', () => {
 
       const stackBottom = 24 + 180;
       // n1 stays in the stack zone
-      expect(board.notes[0].x).toBe(VmWhiteBoard.INITIAL_X);
-      expect(board.notes[0].y).toBe(VmWhiteBoard.INITIAL_Y);
+      expect(board.notes[0].x).toBe(TEST_CONFIG.initialX);
+      expect(board.notes[0].y).toBe(TEST_CONFIG.initialY);
 
       // n2 is the first note on the wrapped row below the stack,
-      // so it starts at NOTE_GAP (not INITIAL_X)
-      expect(board.notes[1].x).toBe(VmWhiteBoard.NOTE_GAP);
+      // so it starts at noteGap (not initialX)
+      expect(board.notes[1].x).toBe(TEST_CONFIG.noteGap);
       expect(board.notes[1].y).toBeGreaterThan(stackBottom);
 
       // n3 fits on the same row as n2
@@ -422,9 +440,12 @@ describe('VmWhiteBoard', () => {
   // ────────────────────────────────────────────────────────────
 
   describe('confirmEditing', () => {
-    it('adds editing note to notes[] if text is non-empty', () => {
+    it('keeps editing note in notes[] if text is non-empty', () => {
+      // With the new approach, notes stay in array during editing
       const { board } = createBoard();
-      board.editingNote = new VmStickyNote('n1', 'Hello', 10, 20);
+      const note = new VmStickyNote('n1', 'Hello', 10, 20);
+      board.notes = [note];
+      board.editingNote = note;
 
       board.confirmEditing();
 
@@ -473,9 +494,12 @@ describe('VmWhiteBoard', () => {
   // ────────────────────────────────────────────────────────────
 
   describe('cancelEditing', () => {
-    it('adds editing note back to notes[] if text is non-empty', () => {
+    it('keeps editing note in notes[] if text is non-empty', () => {
+      // With the new approach, notes stay in array during editing
       const { board } = createBoard();
-      board.editingNote = new VmStickyNote('n1', 'Draft', 10, 20);
+      const note = new VmStickyNote('n1', 'Draft', 10, 20);
+      board.notes = [note];
+      board.editingNote = note;
 
       board.cancelEditing();
 
@@ -557,8 +581,8 @@ describe('VmWhiteBoard', () => {
 
       expect(board.notes).toHaveLength(1);
       expect(board.notes[0].text).toBe('New note');
-      expect(board.notes[0].x).toBe(VmWhiteBoard.INITIAL_X);
-      expect(board.notes[0].y).toBe(VmWhiteBoard.INITIAL_Y);
+      expect(board.notes[0].x).toBe(TEST_CONFIG.initialX);
+      expect(board.notes[0].y).toBe(TEST_CONFIG.initialY);
     });
 
     it('saves after creating a note', () => {
@@ -573,14 +597,16 @@ describe('VmWhiteBoard', () => {
   // ────────────────────────────────────────────────────────────
 
   describe('editNote', () => {
-    it('removes the target note from notes[]', () => {
+    it('keeps the target note in notes[] (array order stability)', () => {
+      // With the new approach, notes stay in array to preserve order
       const { board } = createBoard();
       const note = new VmStickyNote('n1', 'Edit me', 10, 20);
       board.notes = [note];
 
       board.editNote(note);
 
-      expect(board.notes).toHaveLength(0);
+      expect(board.notes).toHaveLength(1);
+      expect(board.notes[0]).toBe(note);
     });
 
     it('sets the note as editingNote', () => {
@@ -593,19 +619,223 @@ describe('VmWhiteBoard', () => {
       expect(board.editingNote).toBe(note);
     });
 
-    it('confirms any currently editing note first', () => {
+    it('clears previous editing state when switching to new note', () => {
+      // With the new approach, both notes are already in the array
       const { board } = createBoard();
       const existing = new VmStickyNote('n1', 'Existing', 10, 20);
-      board.editingNote = existing;
       const newNote = new VmStickyNote('n2', 'New edit', 30, 40);
-      board.notes = [newNote];
+      board.notes = [existing, newNote];
+      board.editingNote = existing;
 
       board.editNote(newNote);
 
-      // The previously editing note should have been confirmed (added to notes)
-      // and then newNote removed and set as editing
+      // Both notes should remain in the array
       expect(board.editingNote).toBe(newNote);
       expect(board.notes.some((n) => n.id === 'n1')).toBe(true);
+      expect(board.notes.some((n) => n.id === 'n2')).toBe(true);
+    });
+
+    it('sets editor content to the correct note text when switching between notes', async () => {
+      // This test documents a bug fix: when clicking a note to edit while another
+      // note was being edited, the editor would incorrectly show the old note's text.
+      // The implementation now uses setTimeout for DOM timing.
+      const { board } = createBoard();
+      
+      // Mock document.querySelector to return a mock editor
+      let capturedTextContent = null;
+      const mockEditor = {
+        set textContent(value) { capturedTextContent = value; },
+        get textContent() { return capturedTextContent; },
+        focus: vi.fn(),
+      };
+      vi.spyOn(document, 'querySelector').mockReturnValue(mockEditor);
+      board._vmDom.moveCursorToEnd = vi.fn();
+
+      // Setup: two notes exist
+      const note1 = new VmStickyNote('n1', 'First note text', 10, 20);
+      const note2 = new VmStickyNote('n2', 'Second note text', 30, 40);
+      board.notes = [note1, note2];
+
+      // Edit note1 first
+      board.editNote(note1);
+      
+      // Wait for setTimeout to execute
+      await new Promise(resolve => setTimeout(resolve, 60));
+      expect(capturedTextContent).toBe('First note text');
+
+      // Reset capture
+      capturedTextContent = null;
+
+      // Now edit note2 (simulating clicking on a different note)
+      board.editNote(note2);
+      
+      // Wait for setTimeout to execute
+      await new Promise(resolve => setTimeout(resolve, 60));
+
+      // The editor should show note2's text, NOT note1's text
+      expect(capturedTextContent).toBe('Second note text');
+      expect(board.editingNote.text).toBe('Second note text');
+      
+      vi.restoreAllMocks();
+    });
+
+    it('preserves correct note reference in setTimeout when notes array is modified', async () => {
+      // This test ensures the editNote function uses this.editingNote (not the
+      // closure parameter) when setting editor content, to avoid stale references.
+      const { board } = createBoard();
+      
+      let capturedTextContent = null;
+      const mockEditor = {
+        set textContent(value) { capturedTextContent = value; },
+        get textContent() { return capturedTextContent; },
+        focus: vi.fn(),
+      };
+      vi.spyOn(document, 'querySelector').mockReturnValue(mockEditor);
+      board._vmDom.moveCursorToEnd = vi.fn();
+
+      // Have an existing editing note in the array
+      const oldNote = new VmStickyNote('old', 'Old text', 0, 0);
+      const newNote = new VmStickyNote('new', 'New text', 10, 10);
+      board.notes = [oldNote, newNote];
+      board.editingNote = oldNote;
+
+      // Edit the new note
+      board.editNote(newNote);
+      
+      // Wait for setTimeout to execute
+      await new Promise(resolve => setTimeout(resolve, 60));
+
+      expect(capturedTextContent).toBe('New text');
+      
+      vi.restoreAllMocks();
+    });
+
+    it('handles deferred setTimeout execution correctly (stale closure regression test)', async () => {
+      // This test simulates rapid note switches to ensure the correct text appears.
+      const { board } = createBoard();
+      
+      let capturedTextContent = null;
+      const mockEditor = {
+        set textContent(value) { capturedTextContent = value; },
+        get textContent() { return capturedTextContent; },
+        focus: vi.fn(),
+      };
+      vi.spyOn(document, 'querySelector').mockReturnValue(mockEditor);
+      board._vmDom.moveCursorToEnd = vi.fn();
+
+      // Setup: two notes
+      const note1 = new VmStickyNote('n1', 'Note One', 10, 20);
+      const note2 = new VmStickyNote('n2', 'Note Two', 30, 40);
+      board.notes = [note1, note2];
+
+      // Rapidly edit both notes
+      board.editNote(note1);
+      board.editNote(note2);
+
+      // Wait for all setTimeouts to execute
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // The final state should reflect note2's text
+      expect(capturedTextContent).toBe('Note Two');
+      expect(board.editingNote).toBe(note2);
+      
+      vi.restoreAllMocks();
+    });
+
+    it('guards against null editingNote in deferred $nextTick', () => {
+      // If editNote is called and then editingNote is nullified before $nextTick runs,
+      // the callback should handle it gracefully.
+      const { board } = createBoard();
+      
+      const deferredCallbacks = [];
+      board.$nextTick = (fn) => deferredCallbacks.push(fn);
+      
+      let capturedTextContent = null;
+      board.$refs = {
+        noteEditor: {
+          set textContent(value) { capturedTextContent = value; },
+          get textContent() { return capturedTextContent; },
+          focus: vi.fn(),
+        }
+      };
+      board._vmDom.moveCursorToEnd = vi.fn();
+
+      const note = new VmStickyNote('n1', 'Test', 10, 20);
+      board.notes = [note];
+
+      // Edit a note (queues $nextTick)
+      board.editNote(note);
+
+      // Cancel editing before $nextTick runs
+      board.editingNote = null;
+
+      // Execute deferred callback - should not throw or set content
+      expect(() => deferredCallbacks.forEach(fn => fn())).not.toThrow();
+      expect(capturedTextContent).toBeNull();
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────
+
+  describe('editNoteById', () => {
+    it('finds note by ID and calls editNote', () => {
+      const { board } = createBoard();
+      const note1 = new VmStickyNote('n1', 'First', 10, 20);
+      const note2 = new VmStickyNote('n2', 'Second', 30, 40);
+      board.notes = [note1, note2];
+      
+      const editNoteSpy = vi.spyOn(board, 'editNote').mockImplementation(() => {});
+
+      board.editNoteById('n2');
+
+      expect(editNoteSpy).toHaveBeenCalledWith(note2);
+      editNoteSpy.mockRestore();
+    });
+
+    it('does nothing if note ID is not found', () => {
+      const { board } = createBoard();
+      board.notes = [new VmStickyNote('n1', 'Test', 10, 20)];
+      
+      const editNoteSpy = vi.spyOn(board, 'editNote').mockImplementation(() => {});
+
+      board.editNoteById('nonexistent');
+
+      expect(editNoteSpy).not.toHaveBeenCalled();
+      editNoteSpy.mockRestore();
+    });
+
+    it('prevents stale object references from Alpine x-for (regression test)', async () => {
+      // This test documents the fix for stale closure references in Alpine's x-for.
+      // When clicking a note, Alpine may pass a stale object reference if the array
+      // was mutated (e.g., by blur->confirmEditing). Using ID lookup ensures we
+      // always get the current note object from the array.
+      const { board } = createBoard();
+      
+      let capturedTextContent = null;
+      const mockEditor = {
+        set textContent(value) { capturedTextContent = value; },
+        get textContent() { return capturedTextContent; },
+        focus: vi.fn(),
+      };
+      vi.spyOn(document, 'querySelector').mockReturnValue(mockEditor);
+      board._vmDom.moveCursorToEnd = vi.fn();
+
+      // Setup notes
+      const note1 = new VmStickyNote('n1', 'First', 10, 20);
+      const note2 = new VmStickyNote('n2', 'Second', 30, 40);
+      board.notes = [note1, note2];
+
+      // Simulate: user clicks note1, then note2
+      // Using editNoteById (as the HTML template now does) ensures correct lookup
+      board.editNoteById('n1');
+      await new Promise(resolve => setTimeout(resolve, 60));
+      expect(capturedTextContent).toBe('First');
+
+      board.editNoteById('n2');
+      await new Promise(resolve => setTimeout(resolve, 60));
+      expect(capturedTextContent).toBe('Second');
+      
+      vi.restoreAllMocks();
     });
   });
 
@@ -967,6 +1197,66 @@ describe('VmWhiteBoard', () => {
   });
 
   // ────────────────────────────────────────────────────────────
+
+  describe('onWhiteBoardClick', () => {
+    it('confirms editing when clicking directly on whiteboard', () => {
+      const { board } = createBoard();
+      const note = new VmStickyNote('n1', 'Test', 10, 20);
+      board.notes = [note];
+      board.editingNote = note;
+      const confirmSpy = vi.spyOn(board, 'confirmEditing').mockImplementation(() => {});
+
+      // Simulate clicking on the whiteboard background (closest returns null for all)
+      const mockEvent = {
+        target: { 
+          closest: () => null
+        }
+      };
+
+      board.onWhiteBoardClick(mockEvent);
+
+      expect(confirmSpy).toHaveBeenCalled();
+      confirmSpy.mockRestore();
+    });
+
+    it('does nothing when clicking on a sticky note', () => {
+      const { board } = createBoard();
+      const note = new VmStickyNote('n1', 'Test', 10, 20);
+      board.notes = [note];
+      board.editingNote = note;
+      const confirmSpy = vi.spyOn(board, 'confirmEditing').mockImplementation(() => {});
+
+      // Simulate clicking on a sticky note
+      const mockNoteElement = { classList: { contains: () => false } };
+      const mockEvent = {
+        target: { 
+          closest: (selector) => selector === '.sticky-note' ? mockNoteElement : null
+        }
+      };
+
+      board.onWhiteBoardClick(mockEvent);
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      confirmSpy.mockRestore();
+    });
+
+    it('does nothing when not editing', () => {
+      const { board } = createBoard();
+      board.editingNote = null;
+      const confirmSpy = vi.spyOn(board, 'confirmEditing').mockImplementation(() => {});
+
+      const mockEvent = {
+        target: { closest: () => null }
+      };
+
+      board.onWhiteBoardClick(mockEvent);
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      confirmSpy.mockRestore();
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────
   // getMenuPosition
   // ────────────────────────────────────────────────────────────
 
@@ -1043,16 +1333,157 @@ describe('VmWhiteBoard', () => {
   });
 
   // ────────────────────────────────────────────────────────────
-  // Static constants
+  // Config injection (replaced static constants)
   // ────────────────────────────────────────────────────────────
 
-  describe('static constants', () => {
-    it('has expected layout constants', () => {
-      expect(VmWhiteBoard.NOTE_WIDTH).toBe(180);
-      expect(VmWhiteBoard.NOTE_HEIGHT).toBe(180);
-      expect(VmWhiteBoard.NOTE_GAP).toBe(20);
-      expect(VmWhiteBoard.INITIAL_X).toBe(240);
-      expect(VmWhiteBoard.INITIAL_Y).toBe(24);
+  describe('config injection', () => {
+    it('uses injected config values for layout calculations', () => {
+      const customConfig = {
+        noteWidth: 200,
+        noteHeight: 200,
+        noteGap: 30,
+        initialX: 300,
+        initialY: 50,
+      };
+      const { board } = createBoard({ config: customConfig });
+
+      const pos = board.getNextNotePosition();
+
+      expect(pos.x).toBe(customConfig.initialX);
+      expect(pos.y).toBe(customConfig.initialY);
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────
+  // Regression Tests: Array Order Stability (Alpine.js x-for)
+  // See docs/CODING-GUIDELINES.md for explanation
+  // ────────────────────────────────────────────────────────────
+
+  describe('array order stability (regression tests)', () => {
+    it('notes array order unchanged after editing existing note', () => {
+      // REGRESSION: Previously, editNote() removed the note from array and
+      // confirmEditing() pushed it back to the end, changing array order.
+      // This caused Alpine's x-for to confuse DOM elements.
+      const { board } = createBoard();
+      
+      const note1 = new VmStickyNote('n1', 'First', 100, 20);
+      const note2 = new VmStickyNote('n2', 'Second', 200, 20);
+      const note3 = new VmStickyNote('n3', 'Third', 300, 20);
+      board.notes = [note1, note2, note3];
+
+      // Edit the middle note
+      board.editNote(note2);
+      
+      // Array order should be unchanged
+      expect(board.notes.map(n => n.id)).toEqual(['n1', 'n2', 'n3']);
+      
+      // Confirm editing
+      board.confirmEditing();
+      
+      // Array order should still be unchanged
+      expect(board.notes.map(n => n.id)).toEqual(['n1', 'n2', 'n3']);
+    });
+
+    it('notes array order unchanged after editing multiple notes in sequence', () => {
+      // REGRESSION: Editing note1, then note2, then note3 should not reorder
+      const { board } = createBoard();
+      
+      const note1 = new VmStickyNote('n1', 'First', 100, 20);
+      const note2 = new VmStickyNote('n2', 'Second', 200, 20);
+      const note3 = new VmStickyNote('n3', 'Third', 300, 20);
+      board.notes = [note1, note2, note3];
+
+      // Edit note1, then switch to note2, then switch to note3
+      board.editNote(note1);
+      expect(board.notes.map(n => n.id)).toEqual(['n1', 'n2', 'n3']);
+      
+      board.editNote(note2);
+      expect(board.notes.map(n => n.id)).toEqual(['n1', 'n2', 'n3']);
+      
+      board.editNote(note3);
+      expect(board.notes.map(n => n.id)).toEqual(['n1', 'n2', 'n3']);
+      
+      board.confirmEditing();
+      expect(board.notes.map(n => n.id)).toEqual(['n1', 'n2', 'n3']);
+    });
+
+    it('note positions unchanged after edit cycle', () => {
+      // REGRESSION: Note x/y positions should not swap between notes
+      const { board } = createBoard();
+      
+      const note1 = new VmStickyNote('n1', 'First', 100, 20);
+      const note2 = new VmStickyNote('n2', 'Second', 200, 20);
+      board.notes = [note1, note2];
+
+      // Record original positions
+      const originalPositions = board.notes.map(n => ({ id: n.id, x: n.x, y: n.y }));
+
+      // Edit and confirm note1
+      board.editNote(note1);
+      board.confirmEditing();
+
+      // Edit and confirm note2
+      board.editNote(note2);
+      board.confirmEditing();
+
+      // Positions should be unchanged
+      const finalPositions = board.notes.map(n => ({ id: n.id, x: n.x, y: n.y }));
+      expect(finalPositions).toEqual(originalPositions);
+    });
+
+    it('editingNote stays in notes array during editing', () => {
+      // CRITICAL: Note must stay in array during editing to preserve order
+      const { board } = createBoard();
+      
+      const note1 = new VmStickyNote('n1', 'First', 100, 20);
+      const note2 = new VmStickyNote('n2', 'Second', 200, 20);
+      board.notes = [note1, note2];
+
+      board.editNote(note1);
+
+      // Note1 should still be in the array
+      expect(board.notes.find(n => n.id === 'n1')).toBeDefined();
+      expect(board.notes.length).toBe(2);
+    });
+
+    it('new notes added via startEditing are immediately in array', () => {
+      // New notes must be added to array immediately, not on confirm,
+      // to maintain stable array order
+      const { board } = createBoard();
+      board.notes = [];
+
+      board.startEditing('Hello');
+
+      // New note should be in array immediately
+      expect(board.notes.length).toBe(1);
+      expect(board.editingNote).toBe(board.notes[0]);
+    });
+
+    it('cancelling new empty note removes it from array', () => {
+      const { board } = createBoard();
+      board.notes = [];
+
+      board.startEditing('');
+      expect(board.notes.length).toBe(1);
+
+      board.cancelEditing();
+
+      // Empty note should be removed
+      expect(board.notes.length).toBe(0);
+    });
+
+    it('cancelling existing note with content keeps it in array', () => {
+      const { board } = createBoard();
+      
+      const note1 = new VmStickyNote('n1', 'Has content', 100, 20);
+      board.notes = [note1];
+
+      board.editNote(note1);
+      board.cancelEditing();
+
+      // Note should still be in array
+      expect(board.notes.length).toBe(1);
+      expect(board.notes[0].id).toBe('n1');
     });
   });
 });

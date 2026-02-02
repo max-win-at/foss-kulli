@@ -63,6 +63,7 @@
       x-data="vmWhiteBoard"
       @keydown.window="onKeyDown($event)"
       @paste.window="onPaste($event)"
+      @click="onWhiteBoardClick($event)"
     >
       <!-- Hidden Input for Mobile Keyboard & Clipboard Support -->
       <input
@@ -103,9 +104,10 @@
       <template x-for="note in notes" :key="note.id">
         <div
           class="sticky-note"
+          :data-note-id="note.id"
           :style="`left: ${note.x}px; top: ${note.y}px;`"
-          x-show="matchesSearch(note)"
-          @click.stop="editNote(note)"
+          x-show="matchesSearch(note) && (!editingNote || editingNote.id !== note.id)"
+          @click.stop="editNoteById(note.id)"
         >
           <div class="note-date-header" x-text="note.formattedDate"></div>
           <div class="note-content" x-text="note.text"></div>
@@ -128,7 +130,7 @@
           x-ref="noteEditor"
           @input="updateEditingText($event.target.textContent)"
           @keydown="onEditingKeyDown($event)"
-          @blur="!isDeleting && confirmEditing()"
+          @blur="onEditorBlur()"
         ></div>
         <!-- Added !isDeleting check to blur so it doesn't auto-save while fading out if focus is lost -->
       </div>

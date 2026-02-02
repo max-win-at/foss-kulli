@@ -5,8 +5,9 @@ trigger: always_on
 ## Do's
 - all file names are kebab case
 - classes are defined as ES6 classes
-- public properties are defined using getter/setter notation
-- all class dependencies are parameters of the class ctor
+- public reactive properties in viewmodels must be direct instance properties (not getter/setter) for Alpine.js reactivity compatibility
+- computed/derived properties can use getter notation (e.g., `get formattedDate()`)
+- all class dependencies are parameters of the class ctor (constructor parameter injection directly, no abstraction services)
 - viewmodel classes are called VmViewModelName the files
 - viewmodel file names are viewmodels/view-model-name.js
 - service classes are called SrvServiceName
@@ -20,4 +21,6 @@ trigger: always_on
 ## Dont's
 - do not use window reference in classes
 - do not make object globally available via reference augmentation on the window or the document object
-- do not create html elements in viewmodels. 
+- do not create html elements in viewmodels
+- do not access public static members of other classes (resources and configuration should be injected via constructor)
+- do not change array order in Alpine.js x-for loops (never remove/push items during editing—use x-show to hide instead)

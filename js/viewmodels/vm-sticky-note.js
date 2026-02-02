@@ -11,6 +11,7 @@ class VmStickyNote {
    * @param {string|Date} createdAt - Creation date
    */
   constructor(id, text, x, y, createdAt = new Date()) {
+    // Direct properties for Alpine reactivity
     this.id = id;
     this.text = text;
     this.x = x;

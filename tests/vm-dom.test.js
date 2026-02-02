@@ -1,26 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 describe('VmDom', () => {
+  // Helper to create VmDom with injected dependencies
+  const createVmDom = (windowMock = window, documentMock = document) => {
+    return new VmDom(windowMock, documentMock);
+  };
+
   describe('constructor', () => {
-    it('initializes viewportWidth from window.innerWidth', () => {
-      // jsdom sets default window dimensions
-      const vmDom = new VmDom();
-      expect(vmDom.viewportWidth).toBe(window.innerWidth);
+    it('initializes viewportWidth from injected window.innerWidth', () => {
+      const mockWindow = { innerWidth: 1024, innerHeight: 768, getSelection: () => ({ removeAllRanges: vi.fn(), addRange: vi.fn() }) };
+      const vmDom = createVmDom(mockWindow, document);
+      expect(vmDom.viewportWidth).toBe(1024);
     });
 
-    it('initializes viewportHeight from window.innerHeight', () => {
-      const vmDom = new VmDom();
-      expect(vmDom.viewportHeight).toBe(window.innerHeight);
+    it('initializes viewportHeight from injected window.innerHeight', () => {
+      const mockWindow = { innerWidth: 1024, innerHeight: 768, getSelection: () => ({ removeAllRanges: vi.fn(), addRange: vi.fn() }) };
+      const vmDom = createVmDom(mockWindow, document);
+      expect(vmDom.viewportHeight).toBe(768);
     });
   });
 
   describe('onResize', () => {
-    it('updates viewportWidth and viewportHeight from window', () => {
-      const vmDom = new VmDom();
+    it('updates viewportWidth and viewportHeight from injected window', () => {
+      const mockWindow = { innerWidth: 800, innerHeight: 600, getSelection: () => ({ removeAllRanges: vi.fn(), addRange: vi.fn() }) };
+      const vmDom = createVmDom(mockWindow, document);
 
-      // Simulate a resize by changing jsdom's window dimensions
-      Object.defineProperty(window, 'innerWidth', { value: 1200, writable: true });
-      Object.defineProperty(window, 'innerHeight', { value: 900, writable: true });
+      // Simulate a resize by changing the mock window dimensions
+      mockWindow.innerWidth = 1200;
+      mockWindow.innerHeight = 900;
 
       vmDom.onResize();
 
@@ -31,20 +38,20 @@ describe('VmDom', () => {
 
   describe('moveCursorToEnd', () => {
     it('no-ops when element is null', () => {
-      const vmDom = new VmDom();
+      const vmDom = createVmDom(window, document);
 
       // Should not throw
       expect(() => vmDom.moveCursorToEnd(null)).not.toThrow();
     });
 
     it('no-ops when element is undefined', () => {
-      const vmDom = new VmDom();
+      const vmDom = createVmDom(window, document);
 
       expect(() => vmDom.moveCursorToEnd(undefined)).not.toThrow();
     });
 
     it('sets selection to end of contenteditable element', () => {
-      const vmDom = new VmDom();
+      const vmDom = createVmDom(window, document);
       const el = document.createElement('div');
       el.setAttribute('contenteditable', 'true');
       el.textContent = 'Hello World';
@@ -62,7 +69,7 @@ describe('VmDom', () => {
 
   describe('init', () => {
     it('exists and can be called without error', () => {
-      const vmDom = new VmDom();
+      const vmDom = createVmDom(window, document);
       expect(() => vmDom.init()).not.toThrow();
     });
   });

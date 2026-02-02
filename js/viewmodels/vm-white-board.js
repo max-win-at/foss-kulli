@@ -3,25 +3,24 @@
  * Handles note creation, search, and about functionality
  */
 class VmWhiteBoard {
-  static NOTE_WIDTH = 180;
-  static NOTE_HEIGHT = 180;
-  static NOTE_GAP = 20;
-  static INITIAL_X = 240; // 24px (left) + 180px (width) + 36px (gap)
-  static INITIAL_Y = 24; // Align with top of stack
-
-  /**
-   * @param {Function} noteFactory - Factory function to create notes: (text, x, y, id) => VmStickyNote
   /**
    * @param {Function} noteFactory - Factory function to create notes: (text, x, y, id) => VmStickyNote
    * @param {SrvLocalStorage} srvLocalStorage - Persistence service
    * @param {VmDom} vmDom - DOM ViewModel & Service
+   * @param {Object} config - Layout configuration
+   * @param {number} config.noteWidth - Width of a sticky note
+   * @param {number} config.noteHeight - Height of a sticky note
+   * @param {number} config.noteGap - Gap between notes
+   * @param {number} config.initialX - Initial X position for notes
+   * @param {number} config.initialY - Initial Y position for notes
    */
-  constructor(noteFactory, srvLocalStorage, vmDom) {
+  constructor(noteFactory, srvLocalStorage, vmDom, config) {
     this._noteFactory = noteFactory;
     this._srvLocalStorage = srvLocalStorage;
     this._vmDom = vmDom;
+    this._config = config;
 
-    // Initialize reactive state
+    // Initialize reactive state (direct properties for Alpine reactivity)
     this.hintVisible = true;
     this.viewportWidth = 800; // Default
 
@@ -30,6 +29,7 @@ class VmWhiteBoard {
     this.dragIcon = "pan_tool";
     this.iconOpacity = 1;
     this.iconInterval = null;
+    this.iconTimeout = null;
 
     // Note: Do NOT bind methods here manually. Alpine proxies the instance.
 
@@ -42,6 +42,9 @@ class VmWhiteBoard {
     // Currently editing note (spawned immediately on typing)
     this.editingNote = null;
     this.isDeleting = false;
+    
+    // Timestamp when editing started - used to ignore blur events that fire too soon
+    this._editStartTime = 0;
   }
 
   /**
@@ -86,31 +89,31 @@ class VmWhiteBoard {
 
     // Reposition matching notes from the beginning
     const currentViewportWidth = this.viewportWidth;
-    let currentX = VmWhiteBoard.INITIAL_X;
-    let currentY = VmWhiteBoard.INITIAL_Y;
+    let currentX = this._config.initialX;
+    let currentY = this._config.initialY;
 
     for (const note of matchingNotes) {
       // Check if note would overflow current row
       if (
-        currentX + VmWhiteBoard.NOTE_WIDTH >
-        currentViewportWidth - VmWhiteBoard.NOTE_GAP
+        currentX + this._config.noteWidth >
+        currentViewportWidth - this._config.noteGap
       ) {
         // Move to next row
-        currentY += VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
+        currentY += this._config.noteHeight + this._config.noteGap;
 
         // Smart Wrap logic
         const stackBottom = 24 + 180;
         if (currentY > stackBottom) {
-          currentX = VmWhiteBoard.NOTE_GAP;
+          currentX = this._config.noteGap;
         } else {
-          currentX = VmWhiteBoard.INITIAL_X;
+          currentX = this._config.initialX;
         }
       }
 
       note.x = currentX;
       note.y = currentY;
 
-      currentX += VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
+      currentX += this._config.noteWidth + this._config.noteGap;
     }
   }
 
@@ -231,11 +234,18 @@ class VmWhiteBoard {
    */
   startEditing(initialChar) {
     const position = this.getNextNotePosition();
-    this.editingNote = this._noteFactory(initialChar, position.x, position.y);
+    const newNote = this._noteFactory(initialChar, position.x, position.y);
+    
+    // Add to array immediately so array order stays stable
+    this.notes.push(newNote);
+    this.editingNote = newNote;
+
+    // Record when we started editing to ignore blur events that fire too soon
+    this._editStartTime = Date.now();
 
     // Focus the editing note after Alpine renders it
-    this.$nextTick(() => {
-      const editEl = this.$refs.noteEditor;
+    setTimeout(() => {
+      const editEl = document.querySelector('.note-editor');
       if (editEl) {
         // Set initial text content directly
         editEl.textContent = initialChar;
@@ -243,7 +253,20 @@ class VmWhiteBoard {
         // Move cursor to end using service
         this._vmDom.moveCursorToEnd(editEl);
       }
-    });
+    }, 50);
+  }
+
+  /**
+   * Start editing an existing note by ID
+   * Uses ID lookup to avoid stale object references from Alpine's x-for
+   * @param {string} noteId - ID of the note to edit
+   */
+  editNoteById(noteId) {
+    const note = this.notes.find((n) => n.id === noteId);
+    if (!note) {
+      return;
+    }
+    this.editNote(note);
   }
 
   /**
@@ -251,29 +274,43 @@ class VmWhiteBoard {
    * @param {VmStickyNote} note
    */
   editNote(note) {
-    // If already editing, confirm previous
+    // If already editing the same note, do nothing
+    if (this.editingNote && this.editingNote.id === note.id) {
+      return;
+    }
+    
+    // If editing a different note, stop editing (blur will save via onEditorBlur)
     if (this.editingNote) {
-      this.confirmEditing();
+      // Don't call confirmEditing, just clear - the note stays in the array
+      this.editingNote = null;
+      this.stopIconAnimation();
     }
 
-    // Remove from list (will be re-added on confirm)
-    this.notes = this.notes.filter((n) => n.id !== note.id);
-    this.save();
-
-    // set as editing
+    // Set as editing - note stays in the array, we just reference it
     this.editingNote = note;
 
     this.startIconAnimation(); // Start toggling icons
 
-    this.$nextTick(() => {
-      const editEl = this.$refs.noteEditor;
+    // Record when we started editing to ignore blur events that fire too soon
+    this._editStartTime = Date.now();
+    
+    // Use setTimeout to ensure Alpine has fully updated the DOM with x-show
+    // $nextTick alone doesn't wait for x-show transitions to complete
+    setTimeout(() => {
+      if (!this.editingNote) {
+        return;
+      }
+      
+      // Use querySelector since $refs may not work reliably with x-show transitions
+      const editEl = document.querySelector('.note-editor');
+      
       if (editEl) {
-        editEl.textContent = note.text;
+        editEl.textContent = this.editingNote.text;
         editEl.focus();
         // Move cursor to end using service
         this._vmDom.moveCursorToEnd(editEl);
       }
-    });
+    }, 50);
   }
 
   /**
@@ -287,11 +324,34 @@ class VmWhiteBoard {
   }
 
   /**
-   * Confirm the editing note and add to notes array
+   * Handle blur event from the editor
+   * Confirms editing unless blur happened too soon after starting to edit
+   */
+  onEditorBlur() {
+    const timeSinceEditStart = Date.now() - this._editStartTime;
+    
+    // Ignore blur events that fire within 200ms of starting to edit
+    // These are caused by the programmatic focus, not user action
+    if (timeSinceEditStart < 200) {
+      return;
+    }
+    
+    if (this.isDeleting) {
+      return;
+    }
+    
+    this.confirmEditing();
+  }
+
+  /**
+   * Confirm the editing note - note stays in array, just end editing mode
    */
   confirmEditing() {
-    if (this.editingNote && this.editingNote.text.trim().length > 0) {
-      this.notes.push(this.editingNote);
+    if (this.editingNote) {
+      // If text is empty, remove the note from the array
+      if (this.editingNote.text.trim().length === 0) {
+        this.notes = this.notes.filter(n => n.id !== this.editingNote.id);
+      }
       this.save(); // Persist
     }
     this.editingNote = null;
@@ -299,11 +359,12 @@ class VmWhiteBoard {
   }
 
   /**
-   * Cancel editing and discard the note
+   * Cancel editing - for new empty notes, remove. For existing notes, keep.
    */
   cancelEditing() {
-    if (this.editingNote && this.editingNote.text.trim().length > 0) {
-      this.notes.push(this.editingNote);
+    // If the note has no text (new note that was cancelled), remove it
+    if (this.editingNote && this.editingNote.text.trim().length === 0) {
+      this.notes = this.notes.filter(n => n.id !== this.editingNote.id);
     }
     this.editingNote = null;
     this.stopIconAnimation(); // Stop anims
@@ -321,6 +382,9 @@ class VmWhiteBoard {
       // Move to trash before removing
       this._srvLocalStorage.moveToTrash(this.editingNote);
 
+      // Remove from array since note is in there now
+      this.notes = this.notes.filter(n => n.id !== this.editingNote.id);
+      
       this.editingNote = null;
       this.isDeleting = false;
       this.save();
@@ -480,6 +544,41 @@ class VmWhiteBoard {
   }
 
   /**
+   * Handle click on the whiteboard background
+   * Confirms editing if clicking outside notes
+   * @param {MouseEvent} event
+   */
+  onWhiteBoardClick(event) {
+    // Only act if we have an editing note
+    if (!this.editingNote) return;
+    
+    // Check if click was on an interactive element that should NOT deselect
+    const isOnNote = event.target.closest('.sticky-note');
+    const isOnFab = event.target.closest('.fab');
+    const isOnPopup = event.target.closest('.popup');
+    const isOnStack = event.target.closest('.empty-state-container');
+    const isOnMenu = event.target.closest('.selected-note-menu');
+    
+    // If clicked on a non-editing sticky note, let editNoteById handle it
+    if (isOnNote && !isOnNote.classList.contains('editing')) {
+      return;
+    }
+    
+    // If clicked on the editing note itself, don't deselect
+    if (isOnNote && isOnNote.classList.contains('editing')) {
+      return;
+    }
+    
+    // If clicked on FABs, popups, stack, or menu - don't deselect
+    if (isOnFab || isOnPopup || isOnStack || isOnMenu) {
+      return;
+    }
+    
+    // Otherwise, deselect (clicked on whiteboard background, hidden-input, etc.)
+    this.confirmEditing();
+  }
+
+  /**
    * Create a new empty note and start editing immediately
    * Called when clicking the note stack/plus icon
    */
@@ -506,13 +605,11 @@ class VmWhiteBoard {
    * @returns {{x: number, y: number}}
    */
   getNextNotePosition() {
-    // Include editing note in position calculation
-    const allNotes = this.editingNote
-      ? [...this.notes, this.editingNote]
-      : this.notes;
+    // editingNote is now in the notes array, no need to combine separately
+    const allNotes = this.notes;
 
     if (allNotes.length === 0) {
-      return { x: VmWhiteBoard.INITIAL_X, y: VmWhiteBoard.INITIAL_Y };
+      return { x: this._config.initialX, y: this._config.initialY };
     }
 
     const currentViewportWidth = this.viewportWidth;
@@ -521,13 +618,13 @@ class VmWhiteBoard {
     const lastNote = allNotes[allNotes.length - 1];
 
     // Calculate position to the right of the last note
-    const newX = lastNote.x + VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
+    const newX = lastNote.x + this._config.noteWidth + this._config.noteGap;
     const newY = lastNote.y;
 
     // Check if it would overflow
     if (
-      newX + VmWhiteBoard.NOTE_WIDTH <=
-      currentViewportWidth - VmWhiteBoard.NOTE_GAP
+      newX + this._config.noteWidth <=
+      currentViewportWidth - this._config.noteGap
     ) {
       return { x: newX, y: newY };
     }
@@ -540,13 +637,13 @@ class VmWhiteBoard {
       }
     }
 
-    const nextRowY = lowestY + VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
+    const nextRowY = lowestY + this._config.noteHeight + this._config.noteGap;
 
     // Smart Wrap: If we are below the note stack (Top 24 + Height 180 = 204),
     // we can start from the left edge (NOTE_GAP) instead of indenting.
     const stackBottom = 24 + 180;
     const startX =
-      nextRowY > stackBottom ? VmWhiteBoard.NOTE_GAP : VmWhiteBoard.INITIAL_X;
+      nextRowY > stackBottom ? this._config.noteGap : this._config.initialX;
 
     return {
       x: startX,
@@ -559,39 +656,37 @@ class VmWhiteBoard {
    * Called on window resize
    */
   rearrangeNotes() {
-    // Include editingNote in layout so it flows with the rest
-    const allNotes = this.editingNote
-      ? [...this.notes, this.editingNote]
-      : this.notes;
+    // editingNote is now in the notes array, no need to combine separately
+    const allNotes = this.notes;
 
     if (allNotes.length === 0) return;
 
     const currentViewportWidth = this.viewportWidth;
-    let currentX = VmWhiteBoard.INITIAL_X;
-    let currentY = VmWhiteBoard.INITIAL_Y;
+    let currentX = this._config.initialX;
+    let currentY = this._config.initialY;
 
     for (const note of allNotes) {
       // Check if note would overflow current row
       if (
-        currentX + VmWhiteBoard.NOTE_WIDTH >
-        currentViewportWidth - VmWhiteBoard.NOTE_GAP
+        currentX + this._config.noteWidth >
+        currentViewportWidth - this._config.noteGap
       ) {
         // Move to next row
-        currentY += VmWhiteBoard.NOTE_HEIGHT + VmWhiteBoard.NOTE_GAP;
+        currentY += this._config.noteHeight + this._config.noteGap;
 
         // Smart Wrap logic for rearrange
         const stackBottom = 24 + 180;
         if (currentY > stackBottom) {
-          currentX = VmWhiteBoard.NOTE_GAP;
+          currentX = this._config.noteGap;
         } else {
-          currentX = VmWhiteBoard.INITIAL_X;
+          currentX = this._config.initialX;
         }
       }
 
       note.x = currentX;
       note.y = currentY;
 
-      currentX += VmWhiteBoard.NOTE_WIDTH + VmWhiteBoard.NOTE_GAP;
+      currentX += this._config.noteWidth + this._config.noteGap;
     }
     this.save(); // Persist positions after rearrange
   }
