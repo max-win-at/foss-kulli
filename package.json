@@ -1,0 +1,16 @@
+{
+  "name": "foss-kulli",
+  "version": "1.0.0",
+  "description": "A minimalist sticky notes Progressive Web App",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "jsdom": "^25.0.0"
+  }
+}
