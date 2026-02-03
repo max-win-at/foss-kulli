@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Test configuration for storage keys
+const TEST_STORAGE_CONFIG = {
+  notesKey: 'foss_kulli_notes',
+  trashKey: 'foss_kulli_trash'
+};
+
 describe('SrvLocalStorage', () => {
   let srv;
 
   beforeEach(() => {
-    srv = new SrvLocalStorage();
+    srv = new SrvLocalStorage(TEST_STORAGE_CONFIG);
   });
 
   // ─── saveNotes / loadNotes ───────────────────────────────────
@@ -26,7 +32,7 @@ describe('SrvLocalStorage', () => {
     });
 
     it('returns empty array on corrupted JSON', () => {
-      localStorage.setItem(SrvLocalStorage.STORAGE_KEY_NOTES, '{bad json');
+      localStorage.setItem(TEST_STORAGE_CONFIG.notesKey, '{bad json');
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       expect(srv.loadNotes()).toEqual([]);
@@ -115,7 +121,7 @@ describe('SrvLocalStorage', () => {
     });
 
     it('returns empty array on corrupted trash JSON', () => {
-      localStorage.setItem(SrvLocalStorage.STORAGE_KEY_TRASH, 'not-json');
+      localStorage.setItem(TEST_STORAGE_CONFIG.trashKey, 'not-json');
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       expect(srv.loadTrash()).toEqual([]);
@@ -234,15 +240,15 @@ describe('SrvLocalStorage', () => {
     });
   });
 
-  // ─── static keys ─────────────────────────────────────────────
+  // ─── instance config keys ─────────────────────────────────────────────
 
-  describe('static keys', () => {
-    it('has the expected notes storage key', () => {
-      expect(SrvLocalStorage.STORAGE_KEY_NOTES).toBe('foss_kulli_notes');
+  describe('instance config keys', () => {
+    it('has the expected notes storage key from config', () => {
+      expect(srv._notesKey).toBe('foss_kulli_notes');
     });
 
-    it('has the expected trash storage key', () => {
-      expect(SrvLocalStorage.STORAGE_KEY_TRASH).toBe('foss_kulli_trash');
+    it('has the expected trash storage key from config', () => {
+      expect(srv._trashKey).toBe('foss_kulli_trash');
     });
   });
 });

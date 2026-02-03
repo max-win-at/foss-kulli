@@ -60,11 +60,8 @@ body {
   /* Vertically center items */
   justify-content: flex-start;
   /* Start from left */
-  pointer-events: none;
-  /* Let clicks pass through container to underlying elements if needed, but... */
+  /* Container is clickable for stack interaction */
   pointer-events: auto;
-  /* Wait, we WANT the container to be clickable now for the stack interaction */
-
   user-select: none;
   z-index: 0;
   opacity: 1;
@@ -123,13 +120,6 @@ body {
   }
 }
 
-/* Note Stack Graphic */
-.note-stack {
-  position: relative;
-  width: 180px;
-  height: 180px;
-}
-
 /* Common style for note sheets in the stack */
 .note-sheet {
   position: absolute;
@@ -170,7 +160,6 @@ body {
 .note-sheet.top {
   top: 0;
   left: 0;
-  z-index: 2;
   z-index: 2;
   border-bottom-left-radius: 60px;
   /* The curve */
@@ -324,8 +313,9 @@ body {
   transition: transform 0.2s;
 }
 
-/* Material Design FAB Buttons */
+/* Material Design FAB Buttons - Base Style */
 .fab {
+  /* FAB Base Pattern - shared by .pwa-install-button */
   position: fixed;
   width: var(--fab-size);
   height: var(--fab-size);
@@ -355,7 +345,10 @@ body {
   transform: scale(0.95);
 }
 
-.fab .material-icons {
+.fab .material-icons,
+.pwa-install-button .material-icons {
+  font-size: 24px;
+}
   font-size: 24px;
 }
 
@@ -490,7 +483,6 @@ body {
   font-size: 0.75rem;
   color: rgba(0, 0, 0, 0.4);
   pointer-events: none;
-  font-family: "Roboto", sans-serif;
   z-index: 5;
 }
 
@@ -503,17 +495,18 @@ body {
    PWA Specific Styles
    ================================ */
 
-/* PWA Install Button - FAB style to match search button */
+/* PWA Install Button - Extends FAB base pattern with green variant */
 .pwa-install-button {
+  /* Position overrides */
   position: fixed;
   bottom: 100px;
-  /* Above search button (24px + 56px FAB + 20px margin) */
   right: 24px;
+  /* FAB base pattern properties */
   width: var(--fab-size);
   height: var(--fab-size);
   border-radius: 50%;
+  /* Green color variant */
   background: #4caf50;
-  /* Green color */
   color: #ffffff;
   border: none;
   cursor: pointer;
@@ -526,23 +519,17 @@ body {
     transform 0.2s ease,
     box-shadow 0.2s ease;
   z-index: 100;
-  font-family: "Roboto", sans-serif;
   padding: 0;
 }
 
 .pwa-install-button:hover {
   background: #388e3c;
-  /* Darker green on hover */
   transform: scale(1.05);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
 }
 
 .pwa-install-button:active {
   transform: scale(0.95);
-}
-
-.pwa-install-button .material-icons {
-  font-size: 24px;
 }
 
 /* Hide the text label - only show icon */
@@ -567,7 +554,6 @@ body {
   font-weight: 500;
   z-index: 10000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  font-family: "Roboto", sans-serif;
 }
 
 .pwa-update-banner .update-btn {
@@ -624,7 +610,6 @@ body {
   font-size: 14px;
   font-weight: 500;
   z-index: 10000;
-  font-family: "Roboto", sans-serif;
 }
 
 .offline-indicator .material-icons {

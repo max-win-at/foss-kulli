@@ -3,9 +3,9 @@
  * Provides offline functionality and caching for PWA
  */
 
-const CACHE_NAME = 'foss-kulli-v1';
-const STATIC_CACHE = 'foss-kulli-static-v1';
-const DYNAMIC_CACHE = 'foss-kulli-dynamic-v1';
+const CACHE_NAME = 'foss-kulli-v3';
+const STATIC_CACHE = 'foss-kulli-static-v3';
+const DYNAMIC_CACHE = 'foss-kulli-dynamic-v3';
 
 // Assets to cache immediately on install
 const STATIC_ASSETS = [
@@ -159,7 +159,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For local assets: Cache first, network fallback
+  // For local JS files and HTML: Network first (ensure fresh code)
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.html') || url.pathname === '/') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          // Cache the fresh response
+          const responseClone = networkResponse.clone();
+          caches.open(DYNAMIC_CACHE)
+            .then((cache) => cache.put(request, responseClone));
+          return networkResponse;
+        })
+        .catch(() => {
+          // Network failed, try cache
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // For other local assets: Cache first, network fallback
   event.respondWith(
     caches.match(request)
       .then((cachedResponse) => {

@@ -3,10 +3,15 @@
  * Handles persistence for notes and trash
  */
 class SrvLocalStorage {
-  static STORAGE_KEY_NOTES = "foss_kulli_notes";
-  static STORAGE_KEY_TRASH = "foss_kulli_trash";
-
-  constructor() {}
+  /**
+   * @param {Object} config - Configuration object
+   * @param {string} config.notesKey - Storage key for notes
+   * @param {string} config.trashKey - Storage key for trash
+   */
+  constructor(config) {
+    this._notesKey = config.notesKey;
+    this._trashKey = config.trashKey;
+  }
 
   /**
    * Save active notes to local storage
@@ -14,7 +19,7 @@ class SrvLocalStorage {
    */
   saveNotes(notes) {
     const serialized = JSON.stringify(notes);
-    localStorage.setItem(SrvLocalStorage.STORAGE_KEY_NOTES, serialized);
+    localStorage.setItem(this._notesKey, serialized);
   }
 
   /**
@@ -22,7 +27,7 @@ class SrvLocalStorage {
    * @returns {Array<Object>} Plain objects, need hydration
    */
   loadNotes() {
-    const json = localStorage.getItem(SrvLocalStorage.STORAGE_KEY_NOTES);
+    const json = localStorage.getItem(this._notesKey);
     if (!json) return [];
     try {
       return JSON.parse(json);
@@ -53,7 +58,7 @@ class SrvLocalStorage {
    */
   saveTrash(trashItems) {
     localStorage.setItem(
-      SrvLocalStorage.STORAGE_KEY_TRASH,
+      this._trashKey,
       JSON.stringify(trashItems),
     );
   }
@@ -63,7 +68,7 @@ class SrvLocalStorage {
    * @returns {Array}
    */
   loadTrash() {
-    const json = localStorage.getItem(SrvLocalStorage.STORAGE_KEY_TRASH);
+    const json = localStorage.getItem(this._trashKey);
     if (!json) return [];
     try {
       return JSON.parse(json);

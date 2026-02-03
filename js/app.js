@@ -10,13 +10,35 @@ document.addEventListener("alpine:init", () => {
     noteHeight: 180,
     noteGap: 20,
     initialX: 240, // 24px (left) + 180px (width) + 36px (gap)
-    initialY: 24,  // Align with top of stack
+    initialY: 24, // Align with top of stack
+  };
+
+  const pwaConfig = {
+    swPath: "/sw.js",
+    swScope: "/",
+  };
+
+  const storageConfig = {
+    notesKey: "foss_kulli_notes",
+    trashKey: "foss_kulli_trash",
+  };
+
+  const domSelectors = {
+    noteEditor: ".note-editor",
+    stickyNote: ".sticky-note",
+    fab: ".fab",
+    popup: ".popup",
+    emptyStateContainer: ".empty-state-container",
+    selectedNoteMenu: ".selected-note-menu",
+    editingClass: "editing",
   };
 
   // 2. Instantiate Services/ViewModels with constructor parameter injection
-  const srvLocalStorage = new SrvLocalStorage();
-  // Create VmDom with injected window/document and wrap in Alpine.reactive
-  const vmDom = Alpine.reactive(new VmDom(window, document));
+  const srvLocalStorage = new SrvLocalStorage(storageConfig);
+  // Create VmDom with injected window/document/selectors and wrap in Alpine.reactive
+  const vmDom = Alpine.reactive(new VmDom(window, document, domSelectors));
+  // Create VmPwa with injected dependencies and wrap in Alpine.reactive
+  const vmPwa = Alpine.reactive(new VmPwa(window, navigator, pwaConfig));
 
   // 3. Define Factories
   // Initialize counter based on existing notes to avoid duplicate IDs
@@ -36,11 +58,11 @@ document.addEventListener("alpine:init", () => {
    * @param {string} text - Note content
    * @param {number} x - X position
    * @param {number} y - Y position
-   * @returns {VmStickyNote}
+   * @returns {MdlStickyNote}
    */
   const noteFactory = (text, x, y) => {
     const id = `note-${++noteIdCounter}`;
-    return new VmStickyNote(id, text, x, y);
+    return new MdlStickyNote(id, text, x, y);
   };
 
   // 4. Create Singleton ViewModels with injected dependencies
@@ -55,4 +77,5 @@ document.addEventListener("alpine:init", () => {
   // Using a closure to return the singleton instance
   Alpine.data("vmWhiteBoard", () => vmWhiteBoardInstance);
   Alpine.data("vmDom", () => vmDom);
+  Alpine.data("vmPwa", () => vmPwa);
 });
