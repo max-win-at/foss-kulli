@@ -40,24 +40,27 @@ class VmPwa {
    * Register the service worker
    */
   async _registerServiceWorker() {
-    if (!('serviceWorker' in this._navigator)) {
+    if (!("serviceWorker" in this._navigator)) {
       return;
     }
 
     try {
       this._swRegistration = await this._navigator.serviceWorker.register(
         this._config.swPath,
-        { scope: this._config.swScope }
+        { scope: this._config.swScope },
       );
 
-      console.log('[PWA] Service worker registered successfully');
+      console.log("[PWA] Service worker registered successfully");
 
       // Check for updates
-      this._swRegistration.addEventListener('updatefound', () => {
+      this._swRegistration.addEventListener("updatefound", () => {
         const newWorker = this._swRegistration.installing;
 
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && this._navigator.serviceWorker.controller) {
+        newWorker.addEventListener("statechange", () => {
+          if (
+            newWorker.state === "installed" &&
+            this._navigator.serviceWorker.controller
+          ) {
             this.updateAvailable = true;
             this.showUpdateBanner = true;
           }
@@ -65,12 +68,11 @@ class VmPwa {
       });
 
       // Handle controller change
-      this._navigator.serviceWorker.addEventListener('controllerchange', () => {
+      this._navigator.serviceWorker.addEventListener("controllerchange", () => {
         // New SW took control
       });
-
     } catch (error) {
-      console.error('[PWA] Service worker registration failed:', error);
+      console.error("[PWA] Service worker registration failed:", error);
     }
   }
 
@@ -78,14 +80,14 @@ class VmPwa {
    * Setup install prompt handler (A2HS - Add to Home Screen)
    */
   _setupInstallPrompt() {
-    this._window.addEventListener('beforeinstallprompt', (event) => {
+    this._window.addEventListener("beforeinstallprompt", (event) => {
       event.preventDefault();
       this._installPromptEvent = event;
       this.showInstallButton = true;
     });
 
-    this._window.addEventListener('appinstalled', () => {
-      console.log('[PWA] App was installed successfully');
+    this._window.addEventListener("appinstalled", () => {
+      console.log("[PWA] App was installed successfully");
       this.showInstallButton = false;
       this._installPromptEvent = null;
     });
@@ -100,8 +102,8 @@ class VmPwa {
       this.showOfflineIndicator = !isOnline;
     };
 
-    this._window.addEventListener('online', updateOnlineStatus);
-    this._window.addEventListener('offline', updateOnlineStatus);
+    this._window.addEventListener("online", updateOnlineStatus);
+    this._window.addEventListener("offline", updateOnlineStatus);
 
     // Check initial status
     updateOnlineStatus();
@@ -112,14 +114,16 @@ class VmPwa {
    */
   async promptInstall() {
     if (!this._installPromptEvent) {
-      console.log('[PWA] Install prompt not available');
+      console.log("[PWA] Install prompt not available");
       return;
     }
 
     this._installPromptEvent.prompt();
     const { outcome } = await this._installPromptEvent.userChoice;
 
-    console.log(`[PWA] User ${outcome === 'accepted' ? 'accepted' : 'dismissed'} the install prompt`);
+    console.log(
+      `[PWA] User ${outcome === "accepted" ? "accepted" : "dismissed"} the install prompt`,
+    );
 
     this._installPromptEvent = null;
     this.showInstallButton = false;
@@ -130,7 +134,7 @@ class VmPwa {
    */
   applyUpdate() {
     if (this._swRegistration && this._swRegistration.waiting) {
-      this._swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      this._swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
     }
     this._window.location.reload();
   }
@@ -147,8 +151,10 @@ class VmPwa {
    * @returns {boolean}
    */
   isStandalone() {
-    return this._window.matchMedia('(display-mode: standalone)').matches ||
-           this._navigator.standalone === true;
+    return (
+      this._window.matchMedia("(display-mode: standalone)").matches ||
+      this._navigator.standalone === true
+    );
   }
 
   /**
@@ -156,12 +162,12 @@ class VmPwa {
    */
   async clearCaches() {
     if (this._swRegistration && this._swRegistration.active) {
-      this._swRegistration.active.postMessage({ type: 'CLEAR_CACHE' });
+      this._swRegistration.active.postMessage({ type: "CLEAR_CACHE" });
     }
 
     const cacheNames = await caches.keys();
-    await Promise.all(cacheNames.map(name => caches.delete(name)));
+    await Promise.all(cacheNames.map((name) => caches.delete(name)));
 
-    console.log('[PWA] All caches cleared');
+    console.log("[PWA] All caches cleared");
   }
 }

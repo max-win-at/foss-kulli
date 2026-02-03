@@ -57,10 +57,7 @@ class SrvLocalStorage {
    * @param {Array} trashItems
    */
   saveTrash(trashItems) {
-    localStorage.setItem(
-      this._trashKey,
-      JSON.stringify(trashItems),
-    );
+    localStorage.setItem(this._trashKey, JSON.stringify(trashItems));
   }
 
   /**
